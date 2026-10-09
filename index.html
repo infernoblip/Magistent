@@ -1132,7 +1132,7 @@ function defaultView(){
   if(pts.length)return {c:[pts.reduce((a,p)=>a+p[0],0)/pts.length,pts.reduce((a,p)=>a+p[1],0)/pts.length],z:12};
   return {c:[25,10],z:2};
 }
-function tiles(){return L.tileLayer('https://tiles.openfreemap.org/planet/{z}/{x}/{y}.png',{subdomains:'abcd',maxZoom:20,attribution:'&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});}
+function tiles(){return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'});}
 function pinIcon(label,color,extra=''){return L.divIcon({className:'pin-wrap',html:`<div class="pin ${extra}" style="--c:${color}"><div class="pb"></div><div class="pl">${esc(label)}</div></div>`,iconSize:[34,42],iconAnchor:[17,41],popupAnchor:[0,-36]});}
 function initPickMap(form){
   const host=$('#pickMap');
