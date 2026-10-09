@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1017">
+<meta name="color-scheme" content="dark">
+<title>Magistent — The app for Tutors</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#0F1017;--bg-2:#13141D;--card:#181925;--card-2:#1E1F2E;--card-3:#27283C;
+  --border:#25263A;--border-2:#33344B;
+  --text:#ECECF4;--muted:#9A9BB3;--dim:#686983;
+  --lav:#8B5CF6;--lav-2:#A78BFA;--lav-soft:rgba(139,92,246,.14);--lav-line:rgba(139,92,246,.4);
+  --em:#10B981;--em-soft:rgba(16,185,129,.14);
+  --blue:#3B82F6;--blue-soft:rgba(59,130,246,.15);
+  --red:#EF4444;--red-soft:rgba(239,68,68,.14);
+  --amber:#F59E0B;--amber-soft:rgba(245,158,11,.15);
+  --r:14px;--r-sm:10px;--shadow:0 16px 48px rgba(0,0,0,.5);
+  --sidebar:248px;--tap:44px;
+  --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--text);font:14.5px/1.5 var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:var(--lav-2);text-decoration:none}
+[hidden]{display:none!important}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+::selection{background:rgba(139,92,246,.35)}
+*{scrollbar-width:thin;scrollbar-color:#2c2d42 transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2c2d42;border-radius:10px;border:3px solid var(--bg)}
+.muted{color:var(--muted)}.dim{color:var(--dim)}.small{font-size:12.5px}.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Layout ---------- */
+.app{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:100vh;transition:grid-template-columns .25s ease}
+.app.collapsed{--sidebar:76px}
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:20px 14px;border-right:1px solid var(--border);background:var(--bg-2);overflow:hidden}
+.brand{display:flex;align-items:center;gap:12px;padding:4px 6px 20px}
+.logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;background:linear-gradient(135deg,var(--lav),#6D28D9 55%,var(--em));color:#fff;font-weight:800;font-size:18px;letter-spacing:-.5px;box-shadow:0 6px 18px rgba(139,92,246,.3)}
+.brand-text{display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
+.brand-text b{font-size:16px;letter-spacing:-.2px}
+.brand-text span{font-size:11.5px;color:var(--muted)}
+.side-nav{display:flex;flex-direction:column;gap:4px;flex:1}
+.nav-item{display:flex;align-items:center;gap:12px;min-height:var(--tap);padding:0 12px;border-radius:var(--r-sm);color:var(--muted);font-weight:500;white-space:nowrap;transition:background .15s,color .15s;width:100%;text-align:left}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:var(--lav-soft);color:#fff}
+.nav-item.active svg{color:var(--lav-2)}
+.nav-sep{height:1px;background:var(--border);margin:10px 6px}
+.side-foot{display:flex;flex-direction:column;gap:4px}
+.save-ind{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12px;color:var(--dim);white-space:nowrap}
+.collapse-ico{transition:transform .25s}
+.app.collapsed .brand-text,.app.collapsed .nav-item span,.app.collapsed .save-ind span{display:none}
+.app.collapsed .nav-item{justify-content:center;padding:0}
+.app.collapsed .brand,.app.collapsed .save-ind{justify-content:center;padding-left:0;padding-right:0}
+.app.collapsed .collapse-ico{transform:rotate(180deg)}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:500;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 32px;background:rgba(15,16,23,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.tb-left{display:flex;align-items:center;gap:12px;min-width:0}
+.tb-title{min-width:0}
+.tb-title h1{font-size:20px;font-weight:650;letter-spacing:-.3px;line-height:1.25}
+.tb-title p{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-actions{display:flex;gap:8px;align-items:center;flex:none}
+.content{padding:28px 32px 56px;flex:1;width:100%;max-width:1680px;margin:0 auto}
+.view{display:none;animation:fade .25s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.bottom-nav,.fab{display:none}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border-radius:var(--r-sm);border:1px solid var(--border-2);background:var(--card);color:var(--text);font-weight:550;font-size:14px;white-space:nowrap;transition:background .15s,border-color .15s,transform .06s}
+.btn:hover{background:var(--card-2);border-color:#43445e}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--lav);border-color:var(--lav);color:#fff}
+.btn.primary:hover{background:#7C4DEB;border-color:#7C4DEB}
+.btn.success{background:var(--em);border-color:var(--em);color:#04150f}
+.btn.success:hover{background:#0ea371}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--card-2);color:var(--text)}
+.btn.danger{color:#fca5a5;border-color:rgba(239,68,68,.35);background:var(--red-soft)}
+.btn.danger:hover{background:rgba(239,68,68,.24)}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.38;pointer-events:none}
+.icon-btn{width:40px;height:40px;display:inline-grid;place-items:center;flex:none;border-radius:var(--r-sm);color:var(--muted);border:1px solid transparent;transition:background .15s,color .15s}
+.icon-btn:hover{background:var(--card-2);color:var(--text)}
+.icon-btn.bordered{border-color:var(--border-2);background:var(--card)}
+.icon-btn.off{opacity:.25;pointer-events:none}
+.icon-btn.danger-h:hover{color:#fca5a5;background:var(--red-soft)}
+@media (pointer:coarse){.btn{min-height:var(--tap)}.icon-btn{width:var(--tap);height:var(--tap)}}
+
+/* ---------- Cards / stats / pills ---------- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;min-width:0}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+.card-h h2{font-size:15px;font-weight:630;letter-spacing:-.1px}
+.card-h .sub{font-size:12.5px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stat .k{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.stat .k svg{width:16px;height:16px;color:var(--dim)}
+.stat .v{font-size:26px;font-weight:680;letter-spacing:-.6px;font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .h{font-size:12.5px;color:var(--dim)}
+.stat.good .v{color:var(--em)}.stat.accent .v{color:var(--lav-2)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;background:var(--dim)}
+.dot.present{background:var(--em)}.dot.excused{background:var(--blue)}.dot.unexcused{background:var(--red)}.dot.rescheduled{background:var(--amber)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:560;background:var(--card-2);color:var(--muted);border:1px solid var(--border-2);white-space:nowrap}
+.pill svg{width:13px;height:13px}
+.pill.xs{padding:1px 8px;font-size:11px}
+.pill.present{background:var(--em-soft);color:#6EE7B7;border-color:rgba(16,185,129,.3)}
+.pill.excused{background:var(--blue-soft);color:#93C5FD;border-color:rgba(59,130,246,.3)}
+.pill.unexcused{background:var(--red-soft);color:#FCA5A5;border-color:rgba(239,68,68,.3)}
+.pill.rescheduled{background:var(--amber-soft);color:#FCD34D;border-color:rgba(245,158,11,.3)}
+.pill.lav{background:var(--lav-soft);color:var(--lav-2);border-color:var(--lav-line)}
+.pill.click{cursor:pointer;transition:filter .15s}.pill.click:hover{filter:brightness(1.25)}
+.tag{font-size:12px;padding:2px 9px;border-radius:6px;background:var(--card-2);color:var(--muted);border:1px solid var(--border-2)}
+.tag.lav{background:var(--lav-soft);color:var(--lav-2);border-color:var(--lav-line)}
+.mini-tag{font-size:10.5px;font-weight:650;padding:1px 7px;border-radius:6px;background:var(--lav-soft);color:var(--lav-2);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.mini-tag.warn{background:var(--amber-soft);color:#FCD34D}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:48px 20px;color:var(--muted)}
+.empty .ei{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--card-2);border:1px solid var(--border-2);color:var(--lav-2);margin-bottom:4px}
+.empty .ei svg{width:24px;height:24px}
+.empty h3{color:var(--text);font-size:16px;font-weight:620}
+.empty p{max-width:380px;font-size:13.5px}
+.empty .btn{margin-top:8px}
+.banner{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--lav-soft);border:1px solid var(--lav-line);margin-bottom:22px}
+.banner>svg{color:var(--lav-2)}
+.banner div{flex:1;min-width:0;display:flex;flex-direction:column}
+.banner span{font-size:13px;color:var(--muted)}
+.banner.err{background:var(--red-soft);border-color:rgba(239,68,68,.35)}
+.banner.err>svg{color:var(--red)}
+
+/* ---------- Toolbar / segmented / chips ---------- */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px}
+.toolbar .spacer,.spacer{flex:1}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;gap:2px;max-width:100%;overflow-x:auto}
+.seg button{min-height:34px;padding:0 14px;border-radius:8px;color:var(--muted);font-size:13px;font-weight:550;white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--card-3);color:var(--text)}
+.search{position:relative;flex:1;min-width:200px;max-width:400px}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim)}
+.search .input{padding-left:38px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--border-2);background:var(--card);color:var(--muted);font-size:13px;font-weight:560;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.chip:hover{color:var(--text)}
+.chip.on{background:var(--lav-soft);border-color:var(--lav-line);color:#fff}
+.chip .n{font-size:11px;color:var(--dim)}
+.week-nav{display:flex;align-items:center;gap:8px}
+.week-label{min-width:170px;text-align:center;font-size:15px}
+.week-stats{display:flex;gap:6px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin:-6px 0 18px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+
+/* ---------- Forms ---------- */
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.span-2{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.lbl{font-size:12.5px;color:var(--muted);font-weight:560}
+.input{width:100%;min-height:42px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r-sm);outline:none;transition:border-color .15s,box-shadow .15s}
+.input::placeholder{color:#55566e}
+.input:focus{border-color:var(--lav);box-shadow:0 0 0 3px var(--lav-soft)}
+.input.invalid{border-color:var(--red)}
+.input[readonly]{opacity:.75}
+textarea.input{min-height:84px;resize:vertical;line-height:1.5}
+select.input{appearance:none;-webkit-appearance:none;padding-right:34px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239A9BB3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+input[type=date].input,input[type=time].input{color-scheme:dark}
+.hint{font-size:12px;color:var(--dim);line-height:1.45}
+.form-section{grid-column:1/-1;font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);font-weight:680;margin-top:6px;padding-top:16px;border-top:1px solid var(--border)}
+.form-section:first-child{border-top:0;padding-top:0;margin-top:0}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.day-picks{display:flex;flex-wrap:wrap;gap:6px}
+.day-picks label{position:relative}
+.day-picks input{position:absolute;opacity:0;pointer-events:none}
+.day-picks span{display:inline-grid;place-items:center;min-width:50px;min-height:42px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--border-2);background:var(--bg-2);color:var(--muted);font-size:13px;font-weight:620;cursor:pointer;transition:.15s;user-select:none}
+.day-picks input:checked+span{background:var(--lav-soft);border-color:var(--lav);color:#fff}
+.day-picks input:focus-visible+span{box-shadow:0 0 0 3px var(--lav-soft)}
+.field>label.switch,.switch{position:relative;display:flex;align-items:center;gap:12px;cursor:pointer;min-height:44px;font-size:14px;color:var(--text);font-weight:500}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch .sw{width:42px;height:24px;border-radius:999px;background:var(--card-3);border:1px solid var(--border-2);position:relative;transition:.2s;flex:none}
+.switch .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+.sw{background:var(--em);border-color:var(--em)}
+.switch input:checked+.sw::after{transform:translateX(18px)}
+.switch input:focus-visible+.sw{box-shadow:0 0 0 3px var(--em-soft)}
+.pick-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.pick-map{height:240px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border-2);position:relative;z-index:0;background:#12131b}
+.map-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--dim);font-size:13px;text-align:center;padding:16px}
+.status-pick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sp{min-height:64px;border-radius:12px;border:1px solid var(--border-2);background:var(--bg-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:13px;font-weight:620;color:var(--muted);transition:.15s;padding:6px}
+.sp small{font-size:10.5px;font-weight:500;color:var(--dim)}
+.sp:hover{border-color:#4a4b66;color:var(--text)}
+.sp .dot{width:10px;height:10px}
+.sp.on{color:#fff}
+.sp.on.present{border-color:var(--em);background:var(--em-soft)}
+.sp.on.excused{border-color:var(--blue);background:var(--blue-soft)}
+.sp.on.unexcused{border-color:var(--red);background:var(--red-soft)}
+.sp.on.rescheduled{border-color:var(--amber);background:var(--amber-soft)}
+.quick-notes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.quick-notes .chip{min-height:32px;font-size:12px;padding:0 11px}
+
+/* ---------- Modal ---------- */
+.modal-back{position:fixed;inset:0;z-index:2000;background:rgba(5,5,10,.66);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{position:relative;width:100%;max-width:580px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border-2);border-radius:18px;box-shadow:var(--shadow);animation:pop .22s cubic-bezier(.2,.9,.3,1.15)}
+.modal.lg{max-width:800px}.modal.xl{max-width:940px}.modal.sm{max-width:430px}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.modal-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 22px 16px;border-bottom:1px solid var(--border)}
+.modal-h h3{font-size:17px;font-weight:650;letter-spacing:-.2px}
+.modal-h p{font-size:13px;color:var(--muted);margin-top:2px}
+.modal-h .icon-btn{margin:-6px -8px 0 0}
+.modal-b{padding:20px 22px;overflow-y:auto;overscroll-behavior:contain;flex:1}
+.modal-f{display:flex;gap:10px;justify-content:flex-end;align-items:center;padding:14px 22px;border-top:1px solid var(--border);flex-wrap:wrap}
+.modal-f .left{margin-right:auto}
+@keyframes sheet{from{transform:translateY(100%)}to{transform:none}}
+
+/* ---------- Toast ---------- */
+#toastRoot{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:4000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(460px,calc(100vw - 24px))}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:12px;background:#23243A;border:1px solid var(--border-2);color:var(--text);padding:11px 12px 11px 16px;border-radius:12px;box-shadow:var(--shadow);font-size:13.5px;animation:pop .22s ease;width:100%;transition:opacity .3s}
+.toast .ti{color:var(--em);display:flex}.toast.err .ti{color:var(--red)}
+.toast>span:nth-child(2){flex:1}
+.toast button{color:var(--lav-2);font-weight:650;font-size:13px;min-height:32px;padding:0 10px;border-radius:8px}
+.toast button:hover{background:var(--lav-soft)}
+
+/* ---------- Home ---------- */
+.hello{margin-bottom:22px}
+.hello h2{font-size:24px;font-weight:680;letter-spacing:-.5px}
+.hello p{font-size:14px}
+.home-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+.list{display:flex;flex-direction:column;gap:10px}
+.up-list{display:flex;flex-direction:column}
+.up-row{display:flex;align-items:center;gap:14px;padding:10px 6px;border-radius:10px;text-align:left;width:100%;transition:background .15s;min-height:var(--tap)}
+.up-row:hover{background:var(--card-2)}
+.up-d{width:44px;flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.1;padding:6px 0;border-radius:10px;background:var(--bg-2);border:1px solid var(--border)}
+.up-d b{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.up-d span{font-size:17px;font-weight:700}
+.up-row>div{display:flex;flex-direction:column;min-width:0}
+.up-row>div b{font-weight:600;font-size:14px}
+.up-row>div span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.welcome{text-align:center;padding:56px 28px;background:radial-gradient(120% 90% at 50% 0%,rgba(139,92,246,.14),transparent 60%),var(--card)}
+.welcome .logo{width:64px;height:64px;font-size:28px;border-radius:18px;margin:0 auto 20px}
+.welcome h2{font-size:26px;letter-spacing:-.6px;font-weight:700}
+.welcome>p{color:var(--muted);max-width:520px;margin:10px auto 26px}
+.welcome-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.welcome-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:40px;text-align:left}
+.welcome-steps div{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:16px}
+.welcome-steps b{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:4px}
+.welcome-steps b svg{color:var(--em)}
+.welcome-steps span{font-size:13px;color:var(--muted)}
+
+/* ---------- Slots / schedule ---------- */
+.week{display:grid;grid-template-columns:repeat(7,minmax(168px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.day-col{background:var(--card);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;min-height:300px;min-width:0;scroll-margin-top:90px}
+.day-col.today{border-color:var(--lav-line);box-shadow:0 0 0 1px var(--lav-line) inset}
+.day-h{display:flex;align-items:center;justify-content:space-between;padding:12px 8px 10px 14px;border-bottom:1px solid var(--border)}
+.day-h .dn{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:680}
+.day-h .dd{font-size:20px;font-weight:700;letter-spacing:-.4px;line-height:1.2}
+.day-h .dm{font-size:13px;color:var(--dim);font-weight:550;letter-spacing:0}
+.day-col.today .dd,.day-col.today .dn{color:var(--lav-2)}
+.day-b{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1}
+.day-empty{color:var(--dim);font-size:12.5px;text-align:center;padding:22px 0}
+.slot{position:relative;background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:11px 10px 10px 14px;display:flex;flex-direction:column;gap:8px;transition:border-color .15s;min-width:0}
+.slot::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--border-2)}
+.slot.st-present::before{background:var(--em)}.slot.st-excused::before{background:var(--blue)}
+.slot.st-unexcused::before{background:var(--red)}.slot.st-rescheduled::before{background:var(--amber)}
+.slot:hover{border-color:var(--border-2)}
+.slot-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.slot-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.slot-time{font-size:12px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:5px}
+.slot-time svg{width:13px;height:13px}
+.slot-name{font-weight:630;font-size:14px;line-height:1.3;cursor:pointer;width:fit-content}
+.slot-name:hover{color:var(--lav-2)}
+.slot-sub{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-note{font-size:12px;color:var(--muted);background:var(--bg-2);border-radius:8px;padding:6px 8px;line-height:1.4;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.att{display:flex;gap:4px;align-items:center}
+.att-btn{flex:1;min-width:0;height:30px;border-radius:8px;border:1px solid var(--border-2);font-size:11.5px;font-weight:750;color:var(--dim);background:transparent;transition:background .12s,color .12s,border-color .12s}
+.att-btn.p:hover{color:var(--em);border-color:rgba(16,185,129,.6)}
+.att-btn.e:hover{color:var(--blue);border-color:rgba(59,130,246,.6)}
+.att-btn.u:hover{color:var(--red);border-color:rgba(239,68,68,.6)}
+.att-btn.r:hover{color:var(--amber);border-color:rgba(245,158,11,.6)}
+.att-btn.p.on{background:var(--em);border-color:var(--em);color:#04150f}
+.att-btn.e.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.att-btn.u.on{background:var(--red);border-color:var(--red);color:#fff}
+.att-btn.r.on{background:var(--amber);border-color:var(--amber);color:#2b1a00}
+.note-btn{position:relative;width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:8px;border:1px solid var(--border-2);color:var(--dim);transition:.12s}
+.note-btn svg{width:15px;height:15px}
+.note-btn:hover{color:var(--lav-2);border-color:var(--lav-line)}
+.note-btn.has{color:var(--lav-2)}
+.note-btn.has::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--lav-2)}
+.slot.row{flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap}
+.slot.row .slot-main{flex:1;min-width:170px}
+.slot.row .att-btn{flex:none;width:40px;height:36px}
+.slot.row .note-btn{width:36px;height:36px}
+@media (pointer:coarse){.att-btn,.slot.row .att-btn{height:var(--tap)}.note-btn,.slot.row .note-btn{width:var(--tap);height:var(--tap)}.slot.row .att-btn{width:var(--tap)}}
+
+/* ---------- Students ---------- */
+.s-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.s-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;transition:border-color .15s;min-width:0}
+.s-card:hover{border-color:var(--border-2)}
+.s-card.inactive{opacity:.72}
+.s-head{display:flex;gap:12px;align-items:center}
+.avatar{--h:260;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:15px;flex:none;background:hsl(var(--h) 45% 20%);color:hsl(var(--h) 85% 80%);border:1px solid hsl(var(--h) 40% 28%)}
+.s-name{font-weight:640;font-size:15.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-parent{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rate{font-weight:680;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.s-tags{display:flex;gap:6px;flex-wrap:wrap}
+.s-meta{display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted)}
+.s-meta>div{display:flex;align-items:center;gap:9px;min-width:0}
+.s-meta svg{width:15px;height:15px;color:var(--dim)}
+.s-meta .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.s-foot{display:flex;gap:4px;align-items:center;border-top:1px solid var(--border);padding-top:12px;margin-top:auto}
+.contact-row{display:flex;gap:4px}
+.detail-top{display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.dt-main{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 22px;padding:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:12px}
+.kv .k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;font-weight:650;margin-bottom:2px}
+.kv .v{font-size:14px;word-break:break-word;white-space:pre-line}
+.sec-t{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:680;margin:22px 0 10px}
+.mini-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.ms{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.ms b{font-size:18px;font-variant-numeric:tabular-nums}
+.ms span:last-child{font-size:11px;color:var(--dim)}
+.ms.hl{border-color:var(--lav-line);background:var(--lav-soft)}
+.ms.hl b{color:var(--lav-2);font-size:15px;line-height:1.6}
+.hist{display:flex;flex-direction:column}
+.hist-row{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.hist-row:last-child{border-bottom:0}
+.hist-d{width:92px;flex:none;display:flex;flex-direction:column;line-height:1.3}
+.hist-d span{font-size:12px;color:var(--dim)}
+.hist-b{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hist-b p{width:100%;font-size:13px;color:var(--muted);line-height:1.45}
+
+/* ---------- Map ---------- */
+.map-toolbar{margin-bottom:16px}
+.map-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;height:calc(100vh - 210px);min-height:500px}
+.map-wrap{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:#12131b}
+#mapCanvas{position:absolute;inset:0;z-index:0}
+.picking #mapCanvas{cursor:crosshair}
+.map-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:28px;color:var(--muted)}
+.map-fallback h3{color:var(--text);font-size:16px}
+.map-fallback p{max-width:360px;font-size:13.5px}
+.map-panel{overflow-y:auto;padding:18px}
+.home-box{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:12px;margin-bottom:14px}
+.legend-row{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.legend-row span{display:inline-flex;align-items:center;gap:6px}
+.loc-list{display:flex;flex-direction:column;gap:4px}
+.loc-item{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;width:100%;text-align:left;transition:background .15s;min-height:var(--tap)}
+.loc-item:hover{background:var(--card-2)}
+.loc-item>div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.loc-item b{font-weight:600;font-size:13.5px}
+.loc-item span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc-item>svg{color:var(--dim)}
+.route-list .stop{display:flex;gap:12px;padding:14px 0;border-bottom:1px dashed var(--border-2)}
+.route-list .stop:last-child{border-bottom:0}
+.stop .num{width:28px;height:28px;border-radius:50%;background:var(--lav);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12.5px;flex:none}
+.stop-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.stop-t{display:flex;justify-content:space-between;gap:8px}
+.stop-t .tm{font-size:12.5px;color:var(--lav-2);font-weight:620;white-space:nowrap}
+.leg{font-size:11.5px;color:var(--dim);display:flex;align-items:center;gap:5px}
+.leg svg{width:12px;height:12px}
+.stop-a{display:flex;gap:4px;margin-top:4px}
+.pin-wrap{background:none!important;border:0!important}
+.pin{position:relative;width:34px;height:42px}
+.pin .pb{position:absolute;top:0;left:0;width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--c);border:2px solid #0F1017;box-shadow:0 4px 14px rgba(0,0,0,.55)}
+.pin .pl{position:absolute;top:0;left:0;width:34px;height:34px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:12px;font-family:var(--font)}
+.leaflet-container{background:#12131b;font-family:var(--font)}
+.leaflet-popup-content-wrapper{background:var(--card);color:var(--text);border:1px solid var(--border-2);border-radius:14px;box-shadow:var(--shadow)}
+.leaflet-popup-tip{background:var(--card);border:1px solid var(--border-2)}
+.leaflet-popup-content{margin:16px 16px 14px;font-size:13px;line-height:1.45}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted);top:8px;right:8px;font-size:20px}
+.leaflet-bar{border:1px solid var(--border-2)!important;box-shadow:none!important}
+.leaflet-bar a{background:var(--card)!important;color:var(--text)!important;border-bottom-color:var(--border)!important}
+.leaflet-bar a:hover{background:var(--card-2)!important}
+.leaflet-control-attribution{background:rgba(15,16,23,.78)!important;color:var(--dim)!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.pop{display:flex;flex-direction:column;gap:9px;min-width:240px}
+.pop-h{display:flex;gap:10px;align-items:center;padding-right:16px}
+.pop h4{font-size:15px;font-weight:650;line-height:1.25}
+.pop-row{display:flex;gap:8px;color:var(--muted);align-items:flex-start}
+.pop-row svg{width:15px;height:15px;margin-top:2px;color:var(--dim)}
+.pop-row b{color:var(--text);font-weight:600}
+.pop-att{padding:10px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.pop-actions{display:flex;gap:6px}
+.pop-actions .btn{flex:1;color:var(--text)}
+.pop-actions .btn.primary{color:#fff}
+
+/* ---------- Billing ---------- */
+.bill-grid{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(0,1fr);gap:20px;align-items:start}
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);font-weight:680;padding:0 10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:13px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:rgba(255,255,255,.014)}
+.tbl .c{text-align:center}.tbl .r{text-align:right}
+.cell-student{display:flex;align-items:center;gap:10px;min-width:0}
+.cell-student b{font-weight:610}
+.actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.bars{display:flex;align-items:flex-end;gap:10px;padding-top:4px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;min-width:0}
+.bar-track{height:130px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.bar .b{width:100%;max-width:40px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--lav),rgba(139,92,246,.28));min-height:3px;transition:height .45s ease,filter .15s}
+.bar:hover .b{filter:brightness(1.2)}
+.bar.cur .b{background:linear-gradient(180deg,var(--em),rgba(16,185,129,.28))}
+.bar .bl{font-size:11.5px;color:var(--dim)}
+.bar.cur .bl{color:var(--text);font-weight:600}
+.bar .bv{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- Settings ---------- */
+.settings-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+.data-rows>div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.data-rows>div:last-child{border-bottom:0}
+.data-rows span:first-child{color:var(--muted)}
+.btn-col{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.ph-legend{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ph-legend code{font-size:11.5px;background:var(--card-2);border:1px solid var(--border-2);border-radius:6px;padding:1px 6px;color:var(--lav-2)}
+
+/* ---------- Invoice ---------- */
+.inv-stage{background:var(--bg-2);margin:-20px -22px;padding:28px 22px}
+.invoice-paper{background:#fff;color:#1a1b25;border-radius:12px;padding:44px 48px;max-width:760px;margin:0 auto;font-size:13px;line-height:1.55;box-shadow:0 20px 50px rgba(0,0,0,.4);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.inv-top{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-bottom:24px;border-bottom:2px solid #1a1b25}
+.inv-brand{display:flex;gap:14px;align-items:flex-start}
+.inv-logo{width:44px;height:44px;border-radius:12px;background:#8B5CF6;color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;flex:none}
+.inv-biz{font-size:16px;font-weight:750}
+.inv-sm{font-size:12px;color:#5d5e72}
+.inv-title{text-align:right}
+.inv-title h2{font-size:28px;letter-spacing:.14em;font-weight:800;line-height:1.1}
+.inv-status{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:750;letter-spacing:.08em}
+.inv-status.paid{background:#D1FAE5;color:#065F46}.inv-status.unpaid{background:#FEF3C7;color:#92400E}
+.inv-meta{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:18px;padding:22px 0}
+.inv-meta .lb{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:#6b6c80;font-weight:700;margin-bottom:4px}
+.inv-table{width:100%;border-collapse:collapse;margin-top:4px}
+.inv-table th{background:#F3F1FB;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#4b4c60;padding:10px 12px}
+.inv-table td{padding:10px 12px;border-bottom:1px solid #ECEBF3}
+.inv-table .r{text-align:right;font-variant-numeric:tabular-nums}
+.inv-bottom{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:18px}
+.inv-summary{font-size:12px;color:#5d5e72;max-width:340px}
+.inv-totals{margin-left:auto;width:min(300px,100%)}
+.inv-totals div{display:flex;justify-content:space-between;padding:5px 0;font-variant-numeric:tabular-nums}
+.inv-totals .grand{border-top:2px solid #1a1b25;margin-top:6px;padding-top:12px;font-size:17px;font-weight:800}
+.inv-note{margin-top:26px;padding:14px 16px;background:#F7F7FB;border-radius:10px;font-size:12.5px;color:#4b4c60}
+.inv-foot{margin-top:28px;text-align:center;font-size:11.5px;color:#8a8b9e}
+#printRoot{display:none}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1280px){.bill-grid{grid-template-columns:1fr}}
+@media (max-width:1100px){.home-grid,.settings-grid{grid-template-columns:1fr}}
+@media (min-width:900px){.tb-logo{display:none}.only-m{display:none!important}}
+@media (max-width:899px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .topbar{padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+  .tb-logo{width:34px;height:34px;font-size:15px;border-radius:10px}
+  .tb-title h1{font-size:17px}
+  .tb-title p{font-size:12px}
+  .content{padding:16px 16px calc(100px + env(safe-area-inset-bottom))}
+  .hide-m{display:none!important}
+  .bottom-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:900;background:rgba(19,20,29,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  .bn-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;border-radius:12px;color:var(--dim);font-size:11px;font-weight:620}
+  .bn-item svg{width:21px;height:21px}
+  .bn-item.active{color:var(--lav-2);background:var(--lav-soft)}
+  .fab{display:grid;place-items:center;position:fixed;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:18px;background:var(--lav);color:#fff;box-shadow:0 12px 30px rgba(139,92,246,.45);z-index:901}
+  .fab svg{width:24px;height:24px;stroke-width:2.2}
+  .fab.hide{display:none}
+  #toastRoot{bottom:calc(150px + env(safe-area-inset-bottom))}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .stat{padding:14px}
+  .stat .v{font-size:20px}
+  .card{padding:16px}
+  .hello h2{font-size:20px}
+  .week{grid-template-columns:1fr;overflow:visible}
+  .day-col{min-height:0}
+  .day-col.empty-day .day-b{padding:0}
+  .day-col.empty-day .day-h{border-bottom:0}
+  .day-col.empty-day .day-empty{display:none}
+  .week-nav{width:100%}
+  .week-label{flex:1;min-width:0}
+  .search{max-width:none;flex-basis:100%}
+  .s-grid{grid-template-columns:1fr}
+  .map-layout{grid-template-columns:1fr;height:auto;min-height:0}
+  .map-wrap{height:56vh;min-height:320px}
+  .map-panel{overflow:visible}
+  .tbl.resp thead{display:none}
+  .tbl.resp,.tbl.resp tbody,.tbl.resp tr,.tbl.resp td{display:block;width:100%}
+  .tbl.resp tr{background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+  .tbl.resp td{border:0!important;padding:6px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:right!important}
+  .tbl.resp td::before{content:attr(data-label);color:var(--dim);font-size:12px;text-align:left}
+  .tbl.resp td.no-label::before{display:none}
+  .tbl.resp td.no-label{justify-content:flex-start}
+  .tbl.resp .actions{justify-content:flex-start;width:100%}
+  .tbl.resp .actions .btn{flex:1}
+  .welcome{padding:36px 18px}
+  .welcome-steps{grid-template-columns:1fr}
+  .modal-back{align-items:flex-end;padding:0}
+  .modal,.modal.lg,.modal.xl,.modal.sm{max-width:none;border-radius:20px 20px 0 0;max-height:94vh;animation:sheet .28s cubic-bezier(.2,.9,.3,1);border-bottom:0}
+  .modal-h{padding-top:24px}
+  .modal-h::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:4px;background:var(--border-2)}
+  .modal-b{padding:18px 16px}
+  .modal-f{padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+  .modal-f .btn{flex:1 1 auto}
+  .modal-f .left{margin-right:0}
+  .form-grid{grid-template-columns:1fr}
+  .mini-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .kv{grid-template-columns:1fr}
+  .inv-stage{margin:-18px -16px;padding:14px 10px}
+  .invoice-paper{padding:24px 18px}
+  .inv-meta{grid-template-columns:1fr 1fr}
+  .inv-title{text-align:left}
+}
+@media (max-width:480px){.status-pick{grid-template-columns:repeat(2,minmax(0,1fr))}.slot.row .att{width:100%}.slot.row .att-btn{flex:1;width:auto}}
+
+/* ---------- Print ---------- */
+@media print{
+  @page{size:A4;margin:12mm}
+  body.printing{background:#fff!important;color:#000}
+  body.printing>*:not(#printRoot){display:none!important}
+  body.printing #printRoot{display:block!important}
+  body.printing .invoice-paper{box-shadow:none;border-radius:0;padding:0;max-width:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="brand"><div class="logo">M</div><div class="brand-text"><b>Magistent</b><span>The app for Tutors</span></div></div>
+    <nav class="side-nav" id="sideNav"></nav>
+    <div class="side-foot">
+      <div class="save-ind" id="saveInd"><i class="dot" style="background:var(--em)"></i><span>Saved in this browser</span></div>
+      <button class="nav-item" data-act="collapse" title="Collapse sidebar"><svg class="i collapse-ico" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg><span>Collapse</span></button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-left"><div class="logo tb-logo">M</div><div class="tb-title"><h1 id="viewTitle">Overview</h1><p id="viewSub"></p></div></div>
+      <div class="tb-actions" id="topActions"></div>
+    </header>
+    <div class="content">
+      <div id="storageWarn"></div>
+      <section class="view" id="view-home"></section>
+      <section class="view" id="view-students"></section>
+      <section class="view" id="view-schedule"></section>
+      <section class="view" id="view-map">
+        <div class="map-toolbar" id="mapFilters"></div>
+        <div class="map-layout">
+          <div class="map-wrap">
+            <div id="mapCanvas"></div>
+            <div class="map-fallback" id="mapFallback" hidden>
+              <svg class="i" viewBox="0 0 24 24" style="width:32px;height:32px;color:var(--lav-2)"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+              <h3>The map needs an internet connection</h3>
+              <p>Leaflet and map tiles load from the web. Everything else in Magistent works offline — your routes and student locations are still listed alongside.</p>
+            </div>
+          </div>
+          <aside class="map-panel card" id="mapPanel"></aside>
+        </div>
+      </section>
+      <section class="view" id="view-billing"></section>
+      <section class="view" id="view-settings"></section>
+    </div>
+  </main>
+  <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation"></nav>
+  <button class="fab" data-act="fab" aria-label="Quick add"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+</div>
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+<div id="printRoot"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+'use strict';
+
+/* =========================================================
+   ICONS
+   ========================================================= */
+const ICONS={
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  map:'<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/>',
+  receipt:'<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2-3-2z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  archive:'<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
+  restore:'<path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/>',
+  trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  message:'<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
+  pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  chevL:'<path d="m15 18-6-6 6-6"/>',
+  chevR:'<path d="m9 18 6-6-6-6"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  note:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+  print:'<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  nav:'<path d="m3 11 19-9-9 19-2-8z"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>',
+  locate:'<circle cx="12" cy="12" r="7"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
+  wallet:'<path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><circle cx="16" cy="14" r="1.4"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+  ext:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>',
+  database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'
+};
+const ic=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+const STORE_KEY='magistent.data.v1', UI_KEY='magistent.ui.v1';
+const DAY_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_LONG=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const WEEK=[1,2,3,4,5,6,0];
+const STATUSES=['present','excused','unexcused','rescheduled'];
+const ST={
+  present:{label:'Present',short:'P',cls:'p',desc:'Billable'},
+  excused:{label:'Excused',short:'E',cls:'e',desc:'Not billed'},
+  unexcused:{label:'Unexcused',short:'U',cls:'u',desc:'Billable'},
+  rescheduled:{label:'Rescheduled',short:'R',cls:'r',desc:'Not billed'}
+};
+const BILLABLE=new Set(['present','unexcused']);
+const DEFAULT_REMINDER='Hi {parent}, this is a friendly reminder that the tuition fee for {student} for {month} is {total} ({count} billable lessons, invoice {invoice}, due {due}). {terms} Thank you! — {tutor}';
+const DEFAULT_TERMS='Payment is due within 7 days of the invoice date. Bank transfer, UPI, card or cash accepted. Lessons cancelled with less than 24 hours’ notice are billable.';
+const NAV=[
+  {v:'home',l:'Overview',i:'home'},{v:'students',l:'Students',i:'users'},{v:'schedule',l:'Schedule',i:'calendar'},
+  {v:'map',l:'Map',i:'map'},{v:'billing',l:'Billing',i:'receipt'},{v:'settings',l:'Settings',i:'sliders'}
+];
+const SUBJECTS=['Piano','Guitar','Violin','Voice','Drums','Math','Algebra','Geometry','Calculus','Physics','Chemistry','Biology','English','Writing','French','Spanish','German','SAT Prep','Coding','Art'];
+const LEVELS=['Beginner','Elementary','Intermediate','Advanced','Grade 1','Grade 3','Grade 5','Grade 8','GCSE','A-Level','AP','IB','Honors'];
+const QUICK_NOTES=['Homework assigned','Great progress','Needs more practice','New topic introduced','Test / exam practice','Reviewed previous homework'];
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseYmd=s=>{const p=String(s||'').split('-').map(Number);return new Date(p[0]||1970,(p[1]||1)-1,p[2]||1);};
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const today=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());};
+const todayStr=()=>ymd(new Date());
+const mondayOf=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const w=x.getDay();return addDays(x,w===0?-6:1-w);};
+const ymOf=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const shiftMonth=(ym,n)=>{const [y,m]=ym.split('-').map(Number);return ymOf(new Date(y,m-1+n,1));};
+const monthLabel=(ym,short)=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString(undefined,{month:short?'short':'long',year:'numeric'});};
+const monthShort=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString(undefined,{month:'short'});};
+const fmtDate=(s,o={weekday:'short',month:'short',day:'numeric'})=>s?parseYmd(s).toLocaleDateString(undefined,o):'';
+const fmtLong=s=>fmtDate(s,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+const fmtFull=s=>fmtDate(s,{day:'numeric',month:'short',year:'numeric'});
+const fmtTime=t=>{if(!t)return'';const [h,m]=String(t).split(':').map(Number);if(isNaN(h))return t;return new Date(2000,0,1,h,m||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});};
+const nowHM=()=>{const n=new Date();return `${pad(n.getHours())}:${pad(n.getMinutes())}`;};
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const byName=(a,b)=>a.name.localeCompare(b.name);
+const digits=p=>String(p||'').replace(/\D/g,'');
+const initials=n=>String(n||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
+const hueOf=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h;};
+const isMobile=()=>window.matchMedia('(max-width:899px)').matches;
+function money(n,cur){cur=cur??state.settings.currency;const v=Number(n)||0;return cur+v.toLocaleString(undefined,{minimumFractionDigits:Math.round(v*100)%100?2:0,maximumFractionDigits:2});}
+function shortMoney(v){const c=state.settings.currency;return v>=1000?c+(v/1000).toFixed(v>=10000?0:1)+'k':c+Math.round(v);}
+function avatar(s,size){return `<div class="avatar" style="--h:${hueOf(s.id+s.name)}${size?`;width:${size}px;height:${size}px;font-size:${Math.round(size/2.9)}px;border-radius:${Math.round(size/3.6)}px`:''}">${esc(initials(s.name))}</div>`;}
+function haversine(a,b){const R=6371,r=x=>x*Math.PI/180;const dLat=r(b[0]-a[0]),dLng=r(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));}
+function fmtDist(km){return state.settings.distUnit==='mi'?`${(km*0.621371).toFixed(1)} mi`:`${km.toFixed(1)} km`;}
+const hasLoc=s=>!!s&&typeof s.lat==='number'&&typeof s.lng==='number'&&isFinite(s.lat)&&isFinite(s.lng);
+function hasHome(){const s=state.settings;return typeof s.homeLat==='number'&&typeof s.homeLng==='number'&&isFinite(s.homeLat)&&isFinite(s.homeLng);}
+function emptyHTML(icon,title,text,action=''){return `<div class="empty"><div class="ei">${ic(icon)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`;}
+function stat(k,v,h,icon,cls=''){return `<div class="stat ${cls}"><div class="k">${ic(icon)}${esc(k)}</div><div class="v">${v}</div><div class="h">${esc(h)}</div></div>`;}
+
+/* =========================================================
+   STATE & PERSISTENCE
+   ========================================================= */
+function defaults(){
+  return {version:1,settings:{tutorName:'',business:'',email:'',phone:'',address:'',currency:'$',paymentTerms:DEFAULT_TERMS,dueDays:7,invoicePrefix:'INV',nextInvoiceNo:1,reminderTemplate:DEFAULT_REMINDER,homeLat:null,homeLng:null,distUnit:'km',lastBackup:null},students:[],sessions:{},invoices:[]};
+}
+function normStudent(s){
+  const days=Array.isArray(s.days)?s.days.map(Number).filter(d=>d>=0&&d<=6&&Number.isInteger(d)):(s.day!=null&&s.day!==''?[Number(s.day)]:[]);
+  const la=parseFloat(s.lat),ln=parseFloat(s.lng);
+  return {id:String(s.id||uid()),name:String(s.name||'Unnamed student').trim(),parent:String(s.parent||''),email:String(s.email||''),phone:String(s.phone||''),
+    address:String(s.address||''),lat:isFinite(la)?la:null,lng:isFinite(ln)?ln:null,days:[...new Set(days)],time:String(s.time||''),
+    duration:Math.max(5,Math.round(num(s.duration)))||60,rate:Math.max(0,num(s.rate)),subject:String(s.subject||''),level:String(s.level||''),
+    startDate:/^\d{4}-\d{2}-\d{2}$/.test(String(s.startDate||''))?String(s.startDate):'',active:s.active!==false,archived:!!s.archived,
+    notes:String(s.notes||''),createdAt:s.createdAt||new Date().toISOString()};
+}
+function normalize(d){
+  const base=defaults();
+  if(!d||typeof d!=='object')return base;
+  base.settings=Object.assign(base.settings,d.settings&&typeof d.settings==='object'?d.settings:{});
+  const st=base.settings;
+  ['homeLat','homeLng'].forEach(k=>{const v=parseFloat(st[k]);st[k]=isFinite(v)?v:null;});
+  st.dueDays=Math.max(0,Math.round(num(st.dueDays)));
+  st.nextInvoiceNo=Math.max(1,Math.round(num(st.nextInvoiceNo))||1);
+  if(!['km','mi'].includes(st.distUnit))st.distUnit='km';
+  base.students=(Array.isArray(d.students)?d.students:[]).filter(Boolean).map(normStudent);
+  const raw=d.sessions||{};
+  const list=Array.isArray(raw)?raw:Object.values(raw);
+  for(const x of list){
+    if(!x||!x.studentId||!/^\d{4}-\d{2}-\d{2}$/.test(String(x.date)))continue;
+    const k=`${x.studentId}_${x.date}`;
+    const hasRate=!(x.rate===null||x.rate===undefined||x.rate==='');
+    base.sessions[k]={id:k,studentId:String(x.studentId),date:String(x.date),time:String(x.time||''),status:STATUSES.includes(x.status)?x.status:'',
+      note:String(x.note||''),rate:hasRate?num(x.rate):null,rateCustom:!!x.rateCustom,extra:!!x.extra,rescheduledTo:String(x.rescheduledTo||''),updatedAt:String(x.updatedAt||'')};
+  }
+  base.invoices=(Array.isArray(d.invoices)?d.invoices:[]).filter(i=>i&&i.studentId&&i.month).map(i=>({...i,id:String(i.id||uid()),items:Array.isArray(i.items)?i.items:[],total:num(i.total),paid:!!i.paid}));
+  return base;
+}
+let storageOK=true;
+function load(){
+  try{const raw=localStorage.getItem(STORE_KEY);return raw?normalize(JSON.parse(raw)):defaults();}
+  catch(e){storageOK=false;return defaults();}
+}
+function save(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(state));if(!storageOK){storageOK=true;renderStorageWarn();}}
+  catch(e){if(storageOK)toast('Could not save to browser storage — export a backup to keep your data','err');storageOK=false;renderStorageWarn();}
+}
+let state=load();
+
+const uiSaved=(()=>{try{return JSON.parse(localStorage.getItem(UI_KEY)||'{}')||{};}catch(e){return {};}})();
+const ui={view:uiSaved.view||'home',collapsed:!!uiSaved.collapsed,mapDay:uiSaved.mapDay!=null?String(uiSaved.mapDay):'all',
+  weekStart:ymd(mondayOf(new Date())),month:ymOf(new Date()),sf:'active',sq:'',mapFit:true,pickHome:false,scrollToday:true,backupDismissed:false};
+function saveUI(){try{localStorage.setItem(UI_KEY,JSON.stringify({view:ui.view,collapsed:ui.collapsed,mapDay:ui.mapDay}));}catch(e){}}
+
+/* =========================================================
+   DOMAIN: students, sessions, occurrences
+   ========================================================= */
+const byId=id=>state.students.find(s=>s.id===id);
+const skey=(sid,date)=>`${sid}_${date}`;
+const activeStudents=()=>state.students.filter(s=>s.active&&!s.archived);
+function isScheduledOn(s,d){return s.active&&!s.archived&&s.days.includes(d.getDay())&&(!s.startDate||ymd(d)>=s.startDate);}
+function scheduleText(s){
+  const d=WEEK.filter(x=>s.days.includes(x)).map(x=>DAY_SHORT[x]).join(', ');
+  return d?`${d}${s.time?' · '+fmtTime(s.time):''} · ${s.duration} min`:'No recurring day set';
+}
+function ensureSession(sid,date,time){
+  const k=skey(sid,date);let x=state.sessions[k];
+  if(!x){const s=byId(sid);
+    x=state.sessions[k]={id:k,studentId:sid,date,time:time||(s?s.time:'')||'',status:'',note:'',rate:null,rateCustom:false,extra:s?!isScheduledOn(s,parseYmd(date)):true,rescheduledTo:'',updatedAt:''};}
+  return x;
+}
+function pruneSession(k){const x=state.sessions[k];if(x&&!x.status&&!x.note&&!x.extra&&!x.rateCustom)delete state.sessions[k];}
+function setStatus(sid,date,status){
+  const s=byId(sid);if(!s)return '';
+  const x=ensureSession(sid,date);
+  x.status=x.status===status?'':status;
+  if(x.status&&x.rate==null)x.rate=s.rate;
+  if(!x.status&&!x.rateCustom)x.rate=null;
+  if(x.status!=='rescheduled')x.rescheduledTo='';
+  x.updatedAt=new Date().toISOString();
+  const k=x.id;pruneSession(k);save();
+  return state.sessions[k]?state.sessions[k].status:'';
+}
+function occurrences(startStr,endStr,onlySid){
+  const bucket=new Map();
+  const start=parseYmd(startStr);const n=Math.round((parseYmd(endStr)-start)/864e5);
+  for(let i=0;i<=n;i++){
+    const d=addDays(start,i),ds=ymd(d);
+    for(const s of state.students){
+      if(onlySid&&s.id!==onlySid)continue;
+      if(isScheduledOn(s,d)){const k=skey(s.id,ds);bucket.set(k,{key:k,sid:s.id,date:ds});}
+    }
+  }
+  for(const x of Object.values(state.sessions)){
+    if(onlySid&&x.studentId!==onlySid)continue;
+    if(x.date>=startStr&&x.date<=endStr&&!bucket.has(x.id))bucket.set(x.id,{key:x.id,sid:x.studentId,date:x.date});
+  }
+  const out=[];
+  for(const o of bucket.values()){
+    const s=byId(o.sid);if(!s)continue;
+    const sess=state.sessions[o.key]||null;
+    out.push({...o,student:s,session:sess,status:sess?sess.status:'',time:(sess&&sess.time)||s.time||''});
+  }
+  return out.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'99').localeCompare(b.time||'99')||a.student.name.localeCompare(b.student.name));
+}
+function nextOcc(s){
+  const t=todayStr(),hm=nowHM();
+  return occurrences(t,ymd(addDays(today(),35)),s.id).find(o=>o.status!=='rescheduled'&&o.status!=='excused'&&(o.date>t||!o.time||o.time>=hm))||null;
+}
+function relevantOcc(s){
+  const t=todayStr();
+  const past=occurrences(ymd(addDays(today(),-14)),t,s.id);
+  const tod=past.filter(o=>o.date===t);
+  if(tod.length)return tod.find(o=>!o.status)||tod[0];
+  const unmarked=past.filter(o=>!o.status);
+  if(unmarked.length)return unmarked[unmarked.length-1];
+  return nextOcc(s)||past[past.length-1]||null;
+}
+function dayStudents(d){return activeStudents().filter(s=>s.days.includes(d)).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99')||byName(a,b));}
+
+/* =========================================================
+   DOMAIN: billing & invoices
+   ========================================================= */
+function rateOf(x){if(!x)return 0;if(x.rate!=null&&x.rate!=='')return num(x.rate);const s=byId(x.studentId);return s?num(s.rate):0;}
+function billing(sid,month){
+  const list=Object.values(state.sessions).filter(x=>x.studentId===sid&&x.date.slice(0,7)===month&&x.status).sort((a,b)=>a.date.localeCompare(b.date));
+  const counts={present:0,excused:0,unexcused:0,rescheduled:0};
+  list.forEach(x=>counts[x.status]++);
+  const billable=list.filter(x=>BILLABLE.has(x.status));
+  return {list,counts,billable,total:billable.reduce((a,x)=>a+rateOf(x),0)};
+}
+function monthTotal(month){
+  let t=0;for(const x of Object.values(state.sessions)){if(x.date.slice(0,7)===month&&BILLABLE.has(x.status)&&byId(x.studentId))t+=rateOf(x);}return t;
+}
+const findInvoice=(sid,month)=>state.invoices.find(i=>i.studentId===sid&&i.month===month);
+function upsertInvoice(sid,month){
+  const st=state.settings,s=byId(sid);if(!s)return null;
+  const b=billing(sid,month);
+  let inv=findInvoice(sid,month);
+  if(!inv){
+    const no=st.nextInvoiceNo;
+    inv={id:uid(),number:`${(st.invoicePrefix||'INV').trim()}-${month.replace('-','')}-${String(no).padStart(3,'0')}`,studentId:sid,month,issueDate:todayStr(),paid:false,paidDate:null};
+    st.nextInvoiceNo=no+1;state.invoices.push(inv);
+  }
+  inv.items=b.billable.map(x=>({date:x.date,time:x.time||s.time||'',status:x.status,rate:rateOf(x),note:x.note||''}));
+  inv.total=b.total;inv.excused=b.counts.excused;inv.rescheduled=b.counts.rescheduled;
+  inv.currency=st.currency;inv.studentName=s.name;
+  inv.dueDate=ymd(addDays(parseYmd(inv.issueDate),st.dueDays||0));
+  inv.updatedAt=new Date().toISOString();
+  save();return inv;
+}
+function reminderText(sid,month){
+  const s=byId(sid),st=state.settings,b=billing(sid,month),inv=findInvoice(sid,month);
+  const map={parent:s.parent||s.name,student:s.name,month:monthLabel(month),total:money(b.total),count:String(b.billable.length),
+    invoice:inv?inv.number:'—',due:inv?fmtFull(inv.dueDate):'on receipt',terms:st.paymentTerms||'',tutor:st.tutorName||st.business||'Your tutor',rate:money(s.rate)};
+  return (st.reminderTemplate||DEFAULT_REMINDER).replace(/\{(\w+)\}/g,(m,k)=>k in map?map[k]:m).replace(/[ \t]{2,}/g,' ').trim();
+}
+async function copyText(t){
+  try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(t);return true;}}catch(e){}
+  const ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,t.length);let ok=false;try{ok=document.execCommand('copy');}catch(e){}ta.remove();return ok;
+}
+
+/* =========================================================
+   MODAL / CONFIRM / TOAST
+   ========================================================= */
+let modalCleanup=null,downOnBack=false;
+function openModal({title,sub='',body,footer='',size='',onMount,onClose}){
+  closeModal();
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="modal-back" data-modal-back><div class="modal ${size}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="modal-h"><div><h3>${esc(title)}</h3>${sub?`<p>${sub}</p>`:''}</div><button class="icon-btn" data-act="close-modal" aria-label="Close">${ic('x')}</button></div>
+    <div class="modal-b">${body}</div>${footer?`<div class="modal-f">${footer}</div>`:''}</div></div>`;
+  document.body.style.overflow='hidden';
+  modalCleanup=onClose||null;
+  const m=$('.modal',root);
+  if(onMount)onMount(m);
+  const f=m.querySelector('.modal-b input:not([type=hidden]):not([readonly]):not([type=checkbox]),.modal-b select,.modal-b textarea');
+  if(f&&window.matchMedia('(pointer:fine)').matches)setTimeout(()=>{try{f.focus();}catch(e){}},80);
+  return m;
+}
+function closeModal(){
+  const root=$('#modalRoot');if(!root.innerHTML)return;
+  if(modalCleanup){try{modalCleanup();}catch(e){}modalCleanup=null;}
+  root.innerHTML='';document.body.style.overflow='';
+}
+const modalOpen=()=>!!$('#modalRoot').innerHTML;
+function confirmBox({title,message,ok='Confirm',danger=false}){
+  return new Promise(res=>{
+    const root=$('#confirmRoot');
+    root.innerHTML=`<div class="modal-back" style="z-index:3000"><div class="modal sm" role="alertdialog" aria-modal="true"><div class="modal-h"><div><h3>${esc(title)}</h3></div></div>
+      <div class="modal-b"><p class="muted" style="line-height:1.6">${message}</p></div>
+      <div class="modal-f"><button class="btn ghost" data-c="0">Cancel</button><button class="btn ${danger?'danger':'primary'}" data-c="1">${esc(ok)}</button></div></div></div>`;
+    const done=v=>{root.innerHTML='';document.removeEventListener('keydown',kd,true);res(v);};
+    const kd=e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();done(false);}else if(e.key==='Enter'){e.preventDefault();e.stopPropagation();done(true);}};
+    document.addEventListener('keydown',kd,true);
+    root.querySelectorAll('[data-c]').forEach(b=>b.addEventListener('click',()=>done(b.dataset.c==='1')));
+    root.querySelector('.modal-back').addEventListener('click',e=>{if(e.target===e.currentTarget)done(false);});
+    setTimeout(()=>{const b=root.querySelector('[data-c="1"]');if(b)b.focus();},40);
+  });
+}
+function toast(msg,type='ok',action){
+  const root=$('#toastRoot');if(!root)return;
+  const el=document.createElement('div');el.className=`toast ${type}`;el.setAttribute('role','status');
+  el.innerHTML=`<span class="ti">${ic(type==='err'?'alert':'check')}</span><span>${esc(msg)}</span>${action?`<button type="button">${esc(action.label)}</button>`:''}`;
+  if(action)el.querySelector('button').addEventListener('click',()=>{el.remove();action.fn();});
+  root.appendChild(el);
+  while(root.children.length>3)root.firstChild.remove();
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),320);},action?6000:2800);
+}
+function showTextModal(title,text){
+  openModal({title,sub:'Automatic copy is blocked here — select the text and copy it manually.',body:`<textarea class="input" rows="7" id="manualCopy" readonly>${esc(text)}</textarea>`,
+    footer:`<button class="btn primary" data-act="close-modal">Done</button>`,onMount:m=>{const t=$('#manualCopy',m);setTimeout(()=>{t.focus();t.select();},100);}});
+}
+
+/* =========================================================
+   NAVIGATION & RENDER
+   ========================================================= */
+function buildNav(){
+  $('#sideNav').innerHTML=NAV.map(n=>`${n.v==='settings'?'<div class="nav-sep"></div>':''}<button class="nav-item" data-act="nav" data-view="${n.v}" title="${n.l}">${ic(n.i)}<span>${n.l}</span></button>`).join('');
+  $('#bottomNav').innerHTML=NAV.slice(0,5).map(n=>`<button class="bn-item" data-act="nav" data-view="${n.v}">${ic(n.i)}<span>${n.l}</span></button>`).join('');
+}
+function go(view){
+  if(!NAV.find(n=>n.v===view))view='home';
+  const changed=ui.view!==view;
+  ui.view=view;saveUI();
+  if(view==='schedule'&&changed)ui.scrollToday=true;
+  if(view!=='map'&&ui.pickHome)ui.pickHome=false;
+  $$('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+view));
+  $$('[data-act="nav"]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  render();
+  if(changed)window.scrollTo(0,0);
+  if(view==='map')setTimeout(()=>{if(map)map.invalidateSize();},80);
+}
+function render(){
+  renderTop();
+  ({home:renderHome,students:renderStudents,schedule:renderSchedule,map:renderMap,billing:renderBilling,settings:renderSettings})[ui.view]();
+  $('.fab').classList.toggle('hide',ui.view==='settings');
+}
+function afterChange(){
+  // Popup content is refreshed after the click finishes; replacing it mid-event detaches the
+  // clicked button, which makes Leaflet treat the click as a map click and close the popup.
+  if(ui.view==='map'){renderMapPanel();renderTop();setTimeout(updatePopups,0);}
+  else render();
+}
+function weekLabel(){
+  const s=parseYmd(ui.weekStart),e=addDays(s,6);
+  const o={month:'short',day:'numeric'};
+  return `${s.toLocaleDateString(undefined,o)} – ${e.toLocaleDateString(undefined,o)}, ${e.getFullYear()}`;
+}
+function renderTop(){
+  const a=activeStudents().length,ar=state.students.filter(s=>s.archived).length;
+  const t={home:['Overview',new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})],
+    students:['Students',`${a} active · ${ar} archived`],schedule:['Schedule','Tap P · E · U · R to mark attendance'],
+    map:['Student Map','Plan travel between lesson locations'],billing:['Billing',`Earnings & invoices · ${monthLabel(ui.month)}`],
+    settings:['Settings','Profile, billing preferences & data']}[ui.view];
+  $('#viewTitle').textContent=t[0];$('#viewSub').textContent=t[1];
+  let h='';
+  if(ui.view==='students')h=`<button class="btn primary hide-m" data-act="add-student">${ic('plus')}Add student</button>`;
+  else if(ui.view==='settings')h=`<button class="btn" data-act="export">${ic('download')}<span class="hide-m">Export backup</span></button>`;
+  else h=`<button class="btn primary hide-m" data-act="log-lesson">${ic('plus')}Log lesson</button>`;
+  if(ui.view!=='settings')h+=`<button class="icon-btn bordered only-m" data-act="nav" data-view="settings" aria-label="Settings">${ic('sliders')}</button>`;
+  $('#topActions').innerHTML=h;
+  document.title=`${t[0]} · Magistent`;
+}
+function renderStorageWarn(){
+  $('#storageWarn').innerHTML=storageOK?'':`<div class="banner err">${ic('alert')}<div><b>Browser storage is unavailable</b><span>Changes can't be saved automatically in this browser mode. Use Settings → Export backup before closing.</span></div></div>`;
+}
+
+/* =========================================================
+   SHARED: lesson slot & attendance buttons
+   ========================================================= */
+function attHTML(sid,date,st,hasNote){
+  return `<div class="att">${STATUSES.map(k=>`<button class="att-btn ${ST[k].cls}${st===k?' on':''}" data-act="mark" data-sid="${sid}" data-date="${date}" data-status="${k}" title="${ST[k].label} (${ST[k].desc})" aria-label="Mark ${ST[k].label}" aria-pressed="${st===k}">${ST[k].short}</button>`).join('')}<button class="note-btn${hasNote?' has':''}" data-act="session" data-sid="${sid}" data-date="${date}" title="Session notes" aria-label="Open session notes">${ic('note')}</button></div>`;
+}
+function slotHTML(o,opt={}){
+  const s=o.student,st=o.status,x=o.session,note=x&&x.note,inactive=!s.active||s.archived;
+  return `<div class="slot${opt.row?' row':''}${st?' st-'+st:''}">
+    <div class="slot-main">
+      <div class="slot-top"><span class="slot-time">${ic('clock')}${opt.showDate?esc(fmtDate(o.date))+' · ':''}${o.time?esc(fmtTime(o.time)):'Any time'}</span>${x&&x.extra?'<span class="mini-tag">Extra</span>':''}${opt.row&&st?`<span class="pill xs ${st}">${ST[st].label}</span>`:''}</div>
+      <div class="slot-name" data-act="view-student" data-id="${s.id}">${esc(s.name)}</div>
+      <div class="slot-sub">${esc([s.subject,s.level].filter(Boolean).join(' · ')||'—')}${inactive?' · inactive':''}</div>
+      ${note?`<div class="slot-note">${esc(note)}</div>`:''}
+    </div>${attHTML(s.id,o.date,st,!!note)}</div>`;
+}
+
+/* =========================================================
+   VIEW: OVERVIEW
+   ========================================================= */
+function welcomeHTML(){
+  return `<div class="card welcome"><div class="logo">M</div><h2>Welcome to Magistent</h2>
+  <p>Your roster, weekly timetable, travel map and invoices in one private workspace. Everything is stored in this browser — nothing is sent to a server.</p>
+  <div class="welcome-actions"><button class="btn primary" data-act="add-student">${ic('plus')}Add your first student</button><button class="btn" data-act="load-demo">${ic('spark')}Explore with sample data</button><button class="btn ghost" data-act="import">${ic('upload')}Import backup</button></div>
+  <div class="welcome-steps">
+    <div><b>${ic('check')}Build your roster</b><span>Contacts, rates, weekly slots and a map pin for every student.</span></div>
+    <div><b>${ic('check')}Mark attendance in one tap</b><span>Present, Excused, Unexcused or Rescheduled — with lesson notes.</span></div>
+    <div><b>${ic('check')}Bill automatically</b><span>Monthly totals, printable invoices and ready-to-send reminders.</span></div>
+  </div></div>`;
+}
+function renderHome(){
+  const el=$('#view-home');
+  if(!state.students.length){el.innerHTML=welcomeHTML();return;}
+  const st=state.settings,t=todayStr();
+  const todays=occurrences(t,t);
+  const ws=ymd(mondayOf(new Date())),we=ymd(addDays(mondayOf(new Date()),6));
+  const week=occurrences(ws,we),wBill=week.filter(o=>BILLABLE.has(o.status)).length;
+  const month=ymOf(new Date()),mTotal=monthTotal(month);
+  const unpaid=state.invoices.filter(i=>!i.paid&&byId(i.studentId)),unpaidTotal=unpaid.reduce((a,i)=>a+num(i.total),0);
+  const backlog=occurrences(ymd(addDays(today(),-14)),ymd(addDays(today(),-1))).filter(o=>!o.status);
+  const upcoming=occurrences(ymd(addDays(today(),1)),ymd(addDays(today(),3))).filter(o=>o.status!=='rescheduled');
+  const hr=new Date().getHours(),greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const lb=st.lastBackup?new Date(st.lastBackup):null;
+  const needBackup=!ui.backupDismissed&&(!lb||Date.now()-lb.getTime()>14*864e5)&&Object.keys(state.sessions).length>0;
+  el.innerHTML=`
+  ${needBackup?`<div class="banner">${ic('database')}<div><b>Keep a backup</b><span>${lb?'Last backup '+esc(fmtFull(ymd(lb))):'No backup exported yet'} — browser data can be cleared by the system.</span></div><button class="btn sm primary" data-act="export">Export</button><button class="icon-btn" data-act="backup-dismiss" aria-label="Dismiss">${ic('x')}</button></div>`:''}
+  <div class="hello"><h2>${greet}${st.tutorName?', '+esc(st.tutorName.split(' ')[0]):''}</h2>
+    <p class="muted">${todays.length?`You have ${plural(todays.length,'lesson')} today.`:'No lessons scheduled today.'}${backlog.length?` ${plural(backlog.length,'past lesson')} still ${backlog.length===1?'needs':'need'} attendance.`:''}</p></div>
+  <div class="stats">
+    ${stat('Today',`${todays.filter(o=>o.status).length}<span class="dim" style="font-size:.6em"> / ${todays.length}</span>`,'lessons marked','calendar')}
+    ${stat('This week',String(wBill),`billable of ${week.length} scheduled`,'clock')}
+    ${stat('Earned · '+monthLabel(month,true),money(mTotal),'from billable sessions','wallet','good')}
+    ${stat('Outstanding',money(unpaidTotal),plural(unpaid.length,'unpaid invoice'),'receipt','accent')}
+  </div>
+  <div class="home-grid">
+    <div class="card"><div class="card-h"><div><h2>Today</h2><div class="sub">${esc(fmtLong(t))}</div></div><button class="btn sm" data-act="nav" data-view="schedule">Week ${ic('chevR')}</button></div>
+      <div class="list">${todays.length?todays.map(o=>slotHTML(o,{row:true})).join(''):emptyHTML('calendar','A free day','No recurring lessons fall on today. Use “Log lesson” to record an extra session.')}</div></div>
+    <div class="stack">
+      ${backlog.length?`<div class="card"><div class="card-h"><div><h2>Needs attendance</h2><div class="sub">Unmarked · last 14 days</div></div><span class="pill unexcused">${backlog.length}</span></div>
+        <div class="list">${backlog.slice(-6).reverse().map(o=>slotHTML(o,{row:true,showDate:true})).join('')}</div>
+        ${backlog.length>6?`<p class="hint" style="margin-top:12px">Showing the 6 most recent. Earlier ones are in the Schedule view.</p>`:''}</div>`:''}
+      <div class="card"><div class="card-h"><div><h2>Coming up</h2><div class="sub">Next 3 days</div></div></div>
+        ${upcoming.length?`<div class="up-list">${upcoming.map(o=>`<button class="up-row" data-act="view-student" data-id="${o.sid}"><span class="up-d"><b>${DAY_SHORT[parseYmd(o.date).getDay()]}</b><span>${parseYmd(o.date).getDate()}</span></span><div><b>${esc(o.student.name)}</b><span>${o.time?esc(fmtTime(o.time)):'Any time'} · ${esc(o.student.subject||'Lesson')}${o.student.address?' · '+esc(o.student.address.split(/[,\n]/)[0]):''}</span></div></button>`).join('')}</div>`:'<p class="muted small">Nothing scheduled in the next three days.</p>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   VIEW: STUDENTS
+   ========================================================= */
+function studentFilterList(){
+  const f=ui.sf,q=ui.sq.trim().toLowerCase();
+  let list=state.students.filter(s=>f==='all'?true:f==='archived'?s.archived:f==='inactive'?(!s.archived&&!s.active):(!s.archived&&s.active));
+  if(q)list=list.filter(s=>[s.name,s.parent,s.subject,s.level,s.address,s.email,s.phone].join(' ').toLowerCase().includes(q));
+  return list.sort(byName);
+}
+function renderStudents(){
+  const el=$('#view-students');
+  const counts={active:activeStudents().length,inactive:state.students.filter(s=>!s.archived&&!s.active).length,archived:state.students.filter(s=>s.archived).length,all:state.students.length};
+  el.innerHTML=`<div class="toolbar"><div class="search">${ic('search')}<input class="input" id="sq" type="search" placeholder="Search name, parent, subject, area…" value="${esc(ui.sq)}" aria-label="Search students"></div>
+    <div class="seg" role="tablist">${['active','inactive','archived','all'].map(k=>`<button class="${ui.sf===k?'on':''}" data-act="sfilter" data-f="${k}">${k==='inactive'?'Paused':cap(k)} <span class="dim">${counts[k]}</span></button>`).join('')}</div></div>
+    <div id="sGrid"></div>`;
+  const inp=$('#sq');inp.addEventListener('input',()=>{ui.sq=inp.value;renderStudentGrid();});
+  renderStudentGrid();
+}
+function renderStudentGrid(){
+  const list=studentFilterList(),g=$('#sGrid');if(!g)return;
+  if(!list.length){
+    g.innerHTML=state.students.length?emptyHTML('search','No matches','Try a different search term or filter.'):emptyHTML('users','No students yet','Add your first student to start building your timetable, map and invoices.',`<button class="btn primary" data-act="add-student">${ic('plus')}Add student</button>`);
+    return;
+  }
+  g.innerHTML=`<div class="s-grid">${list.map(studentCard).join('')}</div>`;
+}
+function studentCard(s){
+  const nx=s.active&&!s.archived?nextOcc(s):null,wa=digits(s.phone);
+  return `<article class="s-card${(!s.active||s.archived)?' inactive':''}">
+    <div class="s-head">${avatar(s)}<div style="min-width:0;flex:1"><div class="s-name">${esc(s.name)}</div><div class="s-parent">${s.parent?'Parent: '+esc(s.parent):'&nbsp;'}</div></div>
+      ${s.archived?'<span class="pill">Archived</span>':!s.active?'<span class="pill">Paused</span>':`<span class="rate">${money(s.rate)}</span>`}</div>
+    ${s.subject||s.level?`<div class="s-tags">${s.subject?`<span class="tag lav">${esc(s.subject)}</span>`:''}${s.level?`<span class="tag">${esc(s.level)}</span>`:''}</div>`:''}
+    <div class="s-meta">
+      <div>${ic('calendar')}<span class="t">${esc(scheduleText(s))}</span></div>
+      <div>${ic('clock')}<span class="t">${nx?'Next: '+esc(fmtDate(nx.date))+(nx.time?' · '+esc(fmtTime(nx.time)):''):'No upcoming lesson'}</span></div>
+      <div>${ic('pin')}<span class="t">${s.address?esc(s.address.replace(/\n/g,', ')):'<span class="dim">No address</span>'}</span>${hasLoc(s)?'':'<span class="mini-tag warn">No pin</span>'}</div>
+    </div>
+    <div class="s-foot">
+      <div class="contact-row">
+        <a class="icon-btn${wa?'':' off'}" href="${wa?'https://wa.me/'+wa:'#'}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">${ic('message')}</a>
+        <a class="icon-btn${s.phone?'':' off'}" href="tel:${esc(s.phone.replace(/[^\d+]/g,''))}" title="Call" aria-label="Call">${ic('phone')}</a>
+        <a class="icon-btn${s.email?'':' off'}" href="mailto:${esc(s.email)}" title="Email" aria-label="Email">${ic('mail')}</a>
+      </div><span class="spacer"></span>
+      <button class="btn sm ghost" data-act="view-student" data-id="${s.id}">View</button>
+      <button class="icon-btn" data-act="edit-student" data-id="${s.id}" title="Edit" aria-label="Edit">${ic('edit')}</button>
+      ${s.archived?`<button class="icon-btn" data-act="restore-student" data-id="${s.id}" title="Restore" aria-label="Restore">${ic('restore')}</button><button class="icon-btn danger-h" data-act="delete-student" data-id="${s.id}" title="Delete permanently" aria-label="Delete permanently">${ic('trash')}</button>`
+        :`<button class="icon-btn" data-act="archive-student" data-id="${s.id}" title="Archive" aria-label="Archive">${ic('archive')}</button>`}
+    </div></article>`;
+}
+
+/* ---------- Student form (add / edit) with map picker ---------- */
+const pick={map:null,marker:null};
+function studentForm(id){
+  const s=id?byId(id):null;
+  const v=s||{name:'',parent:'',email:'',phone:'',address:'',lat:null,lng:null,days:[],time:'16:00',duration:60,rate:'',subject:'',level:'',startDate:todayStr(),active:true,notes:''};
+  const subj=[...new Set([...state.students.map(x=>x.subject).filter(Boolean),...SUBJECTS])];
+  const lev=[...new Set([...state.students.map(x=>x.level).filter(Boolean),...LEVELS])];
+  const cur=esc(state.settings.currency);
+  const body=`<form id="studentForm" class="form-grid" novalidate autocomplete="off">
+    <div class="form-section">Student & contact</div>
+    <div class="field span-2"><label for="f-name">Full name *</label><input class="input" id="f-name" name="name" required value="${esc(v.name)}" placeholder="e.g. Emma Thompson"></div>
+    <div class="field"><label for="f-parent">Parent / contact name</label><input class="input" id="f-parent" name="parent" value="${esc(v.parent)}" placeholder="e.g. Sarah Thompson"></div>
+    <div class="field"><label for="f-phone">Phone / WhatsApp</label><input class="input" id="f-phone" name="phone" type="tel" inputmode="tel" value="${esc(v.phone)}" placeholder="+1 212 555 0100"><span class="hint">Include the country code for WhatsApp links.</span></div>
+    <div class="field span-2"><label for="f-email">Email</label><input class="input" id="f-email" name="email" type="email" inputmode="email" value="${esc(v.email)}" placeholder="parent@example.com"></div>
+    <div class="form-section">Lessons</div>
+    <div class="field"><label for="f-subject">Subject</label><input class="input" id="f-subject" name="subject" list="dl-subj" value="${esc(v.subject)}" placeholder="Piano, Algebra…"></div>
+    <div class="field"><label for="f-level">Skill level</label><input class="input" id="f-level" name="level" list="dl-lev" value="${esc(v.level)}" placeholder="Beginner, Grade 5…"></div>
+    <div class="field span-2"><span class="lbl">Preferred lesson day(s)</span><div class="day-picks">${WEEK.map(d=>`<label><input type="checkbox" name="days" value="${d}"${v.days.includes(d)?' checked':''}><span>${DAY_SHORT[d]}</span></label>`).join('')}</div></div>
+    <div class="field"><label for="f-time">Lesson time</label><input class="input" id="f-time" type="time" name="time" value="${esc(v.time)}"></div>
+    <div class="field"><label for="f-dur">Duration (minutes)</label><input class="input" id="f-dur" type="number" name="duration" min="5" step="5" inputmode="numeric" value="${esc(v.duration)}"></div>
+    <div class="field"><label for="f-rate">Rate per lesson (${cur})</label><input class="input" id="f-rate" type="number" name="rate" min="0" step="0.01" inputmode="decimal" value="${esc(v.rate)}" placeholder="0"></div>
+    <div class="field"><label for="f-start">Start date</label><input class="input" id="f-start" type="date" name="startDate" value="${esc(v.startDate)}"><span class="hint">Recurring slots appear from this date.</span></div>
+    <div class="field span-2"><label class="switch"><input type="checkbox" name="active"${v.active?' checked':''}><span class="sw"></span><span>Active — show in timetable and on the map</span></label></div>
+    <div class="form-section">Location</div>
+    <div class="field span-2"><label for="f-addr">Address / location details</label><textarea class="input" id="f-addr" name="address" rows="2" placeholder="Street, building, floor, gate code, parking tips…">${esc(v.address)}</textarea></div>
+    <div class="field span-2">
+      <div class="pick-tools"><button type="button" class="btn sm" data-act="geocode">${ic('search')}Find address</button><button type="button" class="btn sm" data-act="geolocate">${ic('locate')}Use my location</button><button type="button" class="btn sm ghost" data-act="clear-pin">${ic('x')}Clear pin</button></div>
+      <div class="pick-map" id="pickMap"></div>
+      <span class="hint" style="margin-top:6px">Click the map to drop the lesson pin (drag to adjust), or type coordinates below.</span>
+    </div>
+    <div class="field"><label for="f-lat">Latitude</label><input class="input" id="f-lat" name="lat" inputmode="decimal" value="${v.lat??''}" placeholder="40.7128"></div>
+    <div class="field"><label for="f-lng">Longitude</label><input class="input" id="f-lng" name="lng" inputmode="decimal" value="${v.lng??''}" placeholder="-74.0060"></div>
+    <div class="field span-2"><label for="f-notes">Private notes</label><textarea class="input" id="f-notes" name="notes" rows="2" placeholder="Goals, learning style, repertoire, exam dates…">${esc(v.notes)}</textarea></div>
+    <datalist id="dl-subj">${subj.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+    <datalist id="dl-lev">${lev.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+  </form>`;
+  openModal({title:s?'Edit student':'Add student',sub:s?esc(s.name):'Roster details, weekly slot and lesson location',size:'lg',body,
+    footer:`<button class="btn ghost" data-act="close-modal">Cancel</button><button class="btn primary" type="submit" form="studentForm">${ic('check')}${s?'Save changes':'Add student'}</button>`,
+    onMount:()=>{
+      const form=$('#studentForm');
+      initPickMap(form);
+      form.addEventListener('submit',e=>{e.preventDefault();saveStudentForm(form,s);});
+    },
+    onClose:()=>{if(pick.map){pick.map.remove();}pick.map=null;pick.marker=null;}
+  });
+}
+function saveStudentForm(form,s){
+  const g=n=>form.elements.namedItem(n);
+  const name=g('name').value.trim();
+  if(!name){g('name').classList.add('invalid');g('name').focus();toast('Please enter the student’s name','err');return;}
+  const latS=g('lat').value.trim(),lngS=g('lng').value.trim(),la=parseFloat(latS),ln=parseFloat(lngS);
+  if((latS||lngS)&&!(isFinite(la)&&isFinite(ln)&&Math.abs(la)<=90&&Math.abs(ln)<=180)){toast('Coordinates look invalid — latitude −90…90, longitude −180…180','err');return;}
+  const data=normStudent({...(s||{}),id:s?s.id:uid(),name,parent:g('parent').value.trim(),email:g('email').value.trim(),phone:g('phone').value.trim(),
+    address:g('address').value.trim(),lat:latS&&lngS?la:null,lng:latS&&lngS?ln:null,days:$$('input[name=days]:checked',form).map(i=>Number(i.value)),
+    time:g('time').value,duration:g('duration').value||60,rate:g('rate').value,subject:g('subject').value.trim(),level:g('level').value.trim(),
+    startDate:g('startDate').value,active:g('active').checked,archived:s?s.archived:false,notes:g('notes').value.trim(),createdAt:s?s.createdAt:new Date().toISOString()});
+  if(s)Object.assign(s,data);else state.students.push(data);
+  save();closeModal();toast(s?'Student updated':`${data.name} added to your roster`);
+  ui.mapFit=!s;render();
+}
+function defaultView(){
+  if(hasHome())return {c:[state.settings.homeLat,state.settings.homeLng],z:12};
+  const pts=state.students.filter(hasLoc).map(s=>[s.lat,s.lng]);
+  if(pts.length)return {c:[pts.reduce((a,p)=>a+p[0],0)/pts.length,pts.reduce((a,p)=>a+p[1],0)/pts.length],z:12};
+  return {c:[25,10],z:2};
+}
+function tiles(){return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_StreetMap/MapServer/tile/{z}/{y}/{x}',{subdomains:'abcd',maxZoom:20,attribution:'Tiles &copy; Esri'});}
+function pinIcon(label,color,extra=''){return L.divIcon({className:'pin-wrap',html:`<div class="pin ${extra}" style="--c:${color}"><div class="pb"></div><div class="pl">${esc(label)}</div></div>`,iconSize:[34,42],iconAnchor:[17,41],popupAnchor:[0,-36]});}
+function initPickMap(form){
+  const host=$('#pickMap');
+  if(!window.L){host.innerHTML=`<div class="map-off">${ic('map')}<span>Map picker needs an internet connection.<br>Enter latitude and longitude manually below.</span></div>`;return;}
+  const g=n=>form.elements.namedItem(n);
+  const la=parseFloat(g('lat').value),ln=parseFloat(g('lng').value),has=isFinite(la)&&isFinite(ln);
+  const dv=defaultView();
+  pick.map=L.map(host,{zoomControl:true,attributionControl:false}).setView(has?[la,ln]:dv.c,has?15:dv.z);
+  tiles().addTo(pick.map);
+  if(has)setPickMarker(la,ln);
+  pick.map.on('click',e=>{setPickMarker(e.latlng.lat,e.latlng.lng);g('lat').value=e.latlng.lat.toFixed(6);g('lng').value=e.latlng.lng.toFixed(6);});
+  const sync=()=>{const a=parseFloat(g('lat').value),b=parseFloat(g('lng').value);if(isFinite(a)&&isFinite(b)&&Math.abs(a)<=90&&Math.abs(b)<=180&&pick.map){setPickMarker(a,b);pick.map.setView([a,b],Math.max(pick.map.getZoom(),14));}};
+  g('lat').addEventListener('change',sync);g('lng').addEventListener('change',sync);
+  setTimeout(()=>{if(pick.map)pick.map.invalidateSize();},260);
+}
+function setPickMarker(a,b){
+  if(!pick.map)return;
+  if(pick.marker){pick.marker.setLatLng([a,b]);return;}
+  const f=$('#studentForm');const nm=f?f.elements.namedItem('name').value:'';
+  pick.marker=L.marker([a,b],{icon:pinIcon(initials(nm||'★'),'#8B5CF6'),draggable:true}).addTo(pick.map);
+  pick.marker.on('dragend',()=>{const p=pick.marker.getLatLng(),fm=$('#studentForm');if(fm){fm.elements.namedItem('lat').value=p.lat.toFixed(6);fm.elements.namedItem('lng').value=p.lng.toFixed(6);}});
+}
+async function geocode(btn){
+  const f=$('#studentForm');if(!f)return;
+  const q=f.elements.namedItem('address').value.trim();
+  if(!q){toast('Type an address first','err');f.elements.namedItem('address').focus();return;}
+  btn.disabled=true;
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q.replace(/\n/g,', ')),{headers:{'Accept':'application/json'}});
+    if(!r.ok)throw new Error('http');
+    const j=await r.json();
+    if(!Array.isArray(j)||!j.length){toast('Address not found — drop the pin on the map instead','err');return;}
+    const a=Number(j[0].lat),b=Number(j[0].lon);
+    f.elements.namedItem('lat').value=a.toFixed(6);f.elements.namedItem('lng').value=b.toFixed(6);
+    if(pick.map){setPickMarker(a,b);pick.map.setView([a,b],16);}
+    toast('Location found — adjust the pin if needed');
+  }catch(e){toast('Address lookup needs an internet connection — drop the pin manually','err');}
+  finally{btn.disabled=false;}
+}
+function geolocate(btn){
+  if(!navigator.geolocation){toast('Geolocation is not available in this browser','err');return;}
+  btn.disabled=true;
+  navigator.geolocation.getCurrentPosition(p=>{
+    btn.disabled=false;const f=$('#studentForm');if(!f)return;
+    const a=p.coords.latitude,b=p.coords.longitude;
+    f.elements.namedItem('lat').value=a.toFixed(6);f.elements.namedItem('lng').value=b.toFixed(6);
+    if(pick.map){setPickMarker(a,b);pick.map.setView([a,b],16);}
+    toast('Pinned to your current location');
+  },err=>{btn.disabled=false;toast(err.code===1?'Location permission denied':'Could not get your location','err');},{enableHighAccuracy:true,timeout:12000});
+}
+function clearPin(){
+  const f=$('#studentForm');if(!f)return;
+  f.elements.namedItem('lat').value='';f.elements.namedItem('lng').value='';
+  if(pick.marker&&pick.map){pick.map.removeLayer(pick.marker);pick.marker=null;}
+}
+
+/* ---------- Student detail ---------- */
+function viewStudent(id){
+  const s=byId(id);if(!s)return;
+  const m=ymOf(new Date()),b=billing(id,m);
+  const all=Object.values(state.sessions).filter(x=>x.studentId===id);
+  const life=all.filter(x=>BILLABLE.has(x.status)).reduce((a,x)=>a+rateOf(x),0);
+  const hist=all.filter(x=>x.status||x.note).sort((a,c)=>c.date.localeCompare(a.date)).slice(0,30);
+  const nx=s.active&&!s.archived?nextOcc(s):null,wa=digits(s.phone);
+  const kv=(k,v,span)=>`<div class="${span?'span-2':''}"><div class="k">${k}</div><div class="v">${v||'<span class="dim">—</span>'}</div></div>`;
+  const body=`<div class="detail-top">${avatar(s,56)}<div class="dt-main"><div class="s-tags">${s.subject?`<span class="tag lav">${esc(s.subject)}</span>`:''}${s.level?`<span class="tag">${esc(s.level)}</span>`:''}${s.archived?'<span class="pill">Archived</span>':s.active?'<span class="pill present">Active</span>':'<span class="pill">Paused</span>'}</div><div class="muted small">${esc(scheduleText(s))}</div></div>
+    <div class="contact-row"><a class="icon-btn bordered${wa?'':' off'}" href="${wa?'https://wa.me/'+wa:'#'}" target="_blank" rel="noopener" aria-label="WhatsApp">${ic('message')}</a><a class="icon-btn bordered${s.phone?'':' off'}" href="tel:${esc(s.phone.replace(/[^\d+]/g,''))}" aria-label="Call">${ic('phone')}</a><a class="icon-btn bordered${s.email?'':' off'}" href="mailto:${esc(s.email)}" aria-label="Email">${ic('mail')}</a></div></div>
+    <div class="kv">
+      ${kv('Parent / contact',esc(s.parent))}${kv('Phone / WhatsApp',esc(s.phone))}
+      ${kv('Email',esc(s.email))}${kv('Rate',esc(money(s.rate))+' per lesson')}
+      ${kv('Next lesson',nx?esc(fmtDate(nx.date))+(nx.time?' · '+esc(fmtTime(nx.time)):''):'')}${kv('Lessons start',s.startDate?esc(fmtFull(s.startDate)):'')}
+      ${kv('Address',esc(s.address),true)}
+      ${kv('Coordinates',hasLoc(s)?`${s.lat.toFixed(5)}, ${s.lng.toFixed(5)} · <a href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}" target="_blank" rel="noopener">Open in maps</a>`:'Not pinned',true)}
+      ${s.notes?kv('Private notes',esc(s.notes),true):''}
+    </div>
+    <div class="sec-t">This month · ${esc(monthLabel(m))}</div>
+    <div class="mini-stats">${STATUSES.map(k=>`<div class="ms"><span class="dot ${k}"></span><b>${b.counts[k]}</b><span>${ST[k].label}</span></div>`).join('')}<div class="ms hl"><b>${money(b.total)}</b><span>Billable</span></div></div>
+    <div class="sec-t">Session log <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:500">· lifetime billed ${money(life)}</span></div>
+    <div class="hist">${hist.length?hist.map(x=>`<div class="hist-row"><div class="hist-d"><b>${esc(fmtDate(x.date,{month:'short',day:'numeric'}))}</b><span>${esc(fmtDate(x.date,{weekday:'short',year:'numeric'}))}${x.time?'<br>'+esc(fmtTime(x.time)):''}</span></div>
+      <div class="hist-b">${x.status?`<span class="pill xs ${x.status}">${ST[x.status].label}</span>`:'<span class="pill xs">Unmarked</span>'}${x.extra?'<span class="mini-tag">Extra</span>':''}${BILLABLE.has(x.status)?`<span class="dim small">${money(rateOf(x))}</span>`:''}${x.note?`<p>${esc(x.note)}</p>`:''}</div>
+      <button class="icon-btn" data-act="session" data-sid="${id}" data-date="${x.date}" aria-label="Edit session">${ic('edit')}</button></div>`).join(''):'<p class="muted small">No sessions logged yet.</p>'}</div>`;
+  openModal({title:s.name,sub:esc([s.subject,s.level].filter(Boolean).join(' · ')||'Student profile'),size:'lg',body,
+    footer:`<button class="btn ghost left" data-act="edit-student" data-id="${id}">${ic('edit')}Edit</button><button class="btn" data-act="invoice" data-sid="${id}" data-m="${m}"${b.billable.length||findInvoice(id,m)?'':' disabled'}>${ic('receipt')}Invoice</button><button class="btn primary" data-act="log-lesson" data-sid="${id}">${ic('plus')}Log lesson</button>`});
+}
+
+/* ---------- Session editor (attendance + notes + reschedule) ---------- */
+function openSession(opts={}){
+  const fixed=!!(opts.sid&&opts.date&&!opts.free);
+  const sid=opts.sid||'',date=opts.date||todayStr();
+  const s=sid?byId(sid):null;
+  if(fixed&&!s)return;
+  const studs=state.students.filter(z=>!z.archived).sort((a,b)=>(b.active-a.active)||byName(a,b));
+  if(!fixed&&!studs.length){toast('Add a student first','err');studentForm();return;}
+  const x=s?state.sessions[skey(sid,date)]:null;
+  const cur=opts.status??(x?x.status:'');
+  const rate=x&&x.rate!=null?x.rate:(s?s.rate:'');
+  const body=`<form id="sessForm" class="form-grid" novalidate>
+    ${fixed?'':`<div class="field span-2"><label for="se-sid">Student</label><select class="input" id="se-sid" name="sid" required><option value="">Choose a student…</option>${studs.map(z=>`<option value="${z.id}"${z.id===sid?' selected':''}>${esc(z.name)}${z.subject?' — '+esc(z.subject):''}${z.active?'':' (paused)'}</option>`).join('')}</select></div>`}
+    <div class="field"><label for="se-date">Date</label><input class="input" id="se-date" type="date" name="date" value="${esc(date)}" required${fixed?' readonly':''}></div>
+    <div class="field"><label for="se-time">Time</label><input class="input" id="se-time" type="time" name="time" value="${esc((x&&x.time)||(s&&s.time)||'')}"></div>
+    <div class="field span-2"><span class="lbl">Attendance</span>
+      <div class="status-pick">${STATUSES.map(k=>`<button type="button" class="sp ${k}${cur===k?' on':''}" data-st="${k}" aria-pressed="${cur===k}"><span class="dot ${k}"></span>${ST[k].label}<small>${ST[k].desc}</small></button>`).join('')}</div>
+      <input type="hidden" name="status" value="${cur}"></div>
+    <div class="field span-2 resched"${cur==='rescheduled'?'':' hidden'}>
+      <div class="form-grid"><div class="field"><label for="se-nd">Moved to date</label><input class="input" id="se-nd" type="date" name="newDate" value="${esc(x&&x.rescheduledTo?x.rescheduledTo:'')}"></div><div class="field"><label for="se-nt">New time</label><input class="input" id="se-nt" type="time" name="newTime" value="${esc((x&&x.time)||(s&&s.time)||'')}"></div></div>
+      <span class="hint">Optional — creates an extra session on the new date so it shows up in the timetable.</span></div>
+    <div class="field span-2"><label for="se-note">Session notes</label><textarea class="input" id="se-note" name="note" rows="4" placeholder="e.g. Worked on scale drills & page 14; assigned exercise #3">${esc(x?x.note:'')}</textarea>
+      <div class="quick-notes">${QUICK_NOTES.map(q=>`<button type="button" class="chip qn">${esc(q)}</button>`).join('')}</div></div>
+    <div class="field"><label for="se-rate">Rate for this lesson (${esc(state.settings.currency)})</label><input class="input" id="se-rate" type="number" name="rate" min="0" step="0.01" inputmode="decimal" value="${esc(rate)}"><span class="hint">Billed only when Present or Unexcused.</span></div>
+  </form>`;
+  const existed=!!x;
+  openModal({title:fixed?s.name:'Log a lesson',sub:fixed?esc(fmtLong(date))+(s.subject?' · '+esc(s.subject):''):'Record attendance, notes or an extra session',body,
+    footer:`${existed?`<button class="btn danger left" type="button" id="sessDel">${ic('trash')}Clear</button>`:''}<button class="btn ghost" data-act="close-modal">Cancel</button><button class="btn primary" type="submit" form="sessForm">${ic('check')}Save</button>`,
+    onMount:m=>{
+      const form=$('#sessForm',m),g=n=>form.elements.namedItem(n);
+      $$('.sp',form).forEach(b=>b.addEventListener('click',()=>{
+        const v=g('status').value===b.dataset.st?'':b.dataset.st;g('status').value=v;
+        $$('.sp',form).forEach(z=>{z.classList.toggle('on',z.dataset.st===v);z.setAttribute('aria-pressed',z.dataset.st===v);});
+        $('.resched',form).hidden=v!=='rescheduled';
+      }));
+      $$('.qn',form).forEach(b=>b.addEventListener('click',()=>{const ta=g('note'),t=ta.value.trim();ta.value=t?t.replace(/[.;,\s]*$/,'; ')+b.textContent:b.textContent;ta.focus();}));
+      if(!fixed){g('sid').addEventListener('change',()=>{const z=byId(g('sid').value);if(z){g('time').value=z.time||'';g('rate').value=z.rate;g('newTime').value=z.time||'';}});}
+      const del=$('#sessDel',m);
+      if(del)del.addEventListener('click',async()=>{
+        const ok=await confirmBox({title:'Clear this session?',message:'Attendance, notes and any custom rate for this date will be removed. A recurring slot will reappear as unmarked.',ok:'Clear session',danger:true});
+        if(!ok)return;delete state.sessions[skey(sid,date)];save();closeModal();toast('Session cleared');afterChange();
+      });
+      form.addEventListener('submit',e=>{e.preventDefault();saveSession(form,fixed?sid:null);});
+    }});
+}
+function saveSession(form,fixedSid){
+  const g=n=>form.elements.namedItem(n);
+  const sid=fixedSid||g('sid').value,stu=byId(sid);
+  if(!stu){toast('Choose a student','err');g('sid')&&g('sid').focus();return;}
+  const d=g('date').value;if(!d){toast('Pick a date','err');return;}
+  const status=g('status').value,note=g('note').value.trim(),rv=g('rate').value.trim();
+  const newDate=g('newDate').value,newTime=g('newTime').value;
+  if(status==='rescheduled'&&newDate&&newDate===d){toast('The new date must differ from the original','err');return;}
+  const k=skey(sid,d);
+  const rec=ensureSession(sid,d,g('time').value);
+  rec.time=g('time').value||rec.time;rec.status=status;rec.note=note;
+  if(rv!==''){rec.rate=Math.max(0,num(rv));rec.rateCustom=num(rv)!==num(stu.rate);}
+  else{rec.rateCustom=false;rec.rate=status?num(stu.rate):null;}
+  if(!status&&!rec.rateCustom)rec.rate=null;
+  rec.rescheduledTo=status==='rescheduled'?(newDate||rec.rescheduledTo||''):'';
+  rec.updatedAt=new Date().toISOString();
+  let msg='Session saved';
+  if(status==='rescheduled'&&newDate){
+    const n=ensureSession(sid,newDate,newTime||rec.time);
+    if(newTime)n.time=newTime;
+    if(!n.note)n.note=`Rescheduled from ${fmtDate(d)}`;
+    n.updatedAt=rec.updatedAt;
+    msg=`Rescheduled to ${fmtDate(newDate)}`;
+  }
+  pruneSession(k);save();closeModal();toast(msg);afterChange();
+}
+
+/* =========================================================
+   VIEW: WEEKLY SCHEDULE
+   ========================================================= */
+function renderSchedule(){
+  const el=$('#view-schedule'),ws=ui.weekStart;
+  const days=[0,1,2,3,4,5,6].map(i=>addDays(parseYmd(ws),i));
+  const we=ymd(days[6]),occ=occurrences(ws,we),t=todayStr();
+  const marked=occ.filter(o=>o.status).length;
+  const billSum=occ.filter(o=>BILLABLE.has(o.status)).reduce((a,o)=>a+rateOf(o.session),0);
+  const projected=occ.filter(o=>o.status!=='excused'&&o.status!=='rescheduled').reduce((a,o)=>a+(o.session&&o.session.rate!=null?num(o.session.rate):num(o.student.rate)),0);
+  const thisWeek=ws===ymd(mondayOf(new Date()));
+  el.innerHTML=`<div class="toolbar">
+    <div class="week-nav"><button class="icon-btn bordered" data-act="week" data-d="-1" aria-label="Previous week">${ic('chevL')}</button><div class="week-label"><b>${esc(weekLabel())}</b></div><button class="icon-btn bordered" data-act="week" data-d="1" aria-label="Next week">${ic('chevR')}</button>${thisWeek?'':`<button class="btn sm" data-act="week" data-d="0">Today</button>`}</div>
+    <span class="spacer"></span>
+    <div class="week-stats"><span class="pill">${plural(occ.length,'lesson')}</span><span class="pill">${marked} marked</span><span class="pill present">${money(billSum)} billable</span><span class="pill lav">${money(projected)} projected</span></div></div>
+  <div class="legend">${STATUSES.map(k=>`<span><i class="dot ${k}"></i>${ST[k].short} · ${ST[k].label}${BILLABLE.has(k)?' (billable)':''}</span>`).join('')}</div>
+  ${state.students.length?'':`<div class="banner">${ic('users')}<div><b>Your timetable is empty</b><span>Add students with preferred days and times — their recurring lessons appear here automatically.</span></div><button class="btn sm primary" data-act="add-student">Add student</button></div>`}
+  <div class="week">${days.map(d=>{
+    const ds=ymd(d),list=occ.filter(o=>o.date===ds);
+    return `<section class="day-col${ds===t?' today':''}${list.length?'':' empty-day'}"${ds===t?' id="todayCol"':''}>
+      <header class="day-h"><div><div class="dn">${DAY_LONG[d.getDay()].slice(0,3)}${ds===t?' · Today':''}</div><div class="dd">${d.getDate()} <span class="dm">${esc(d.toLocaleDateString(undefined,{month:'short'}))}</span></div></div>
+      <button class="icon-btn" data-act="log-lesson" data-date="${ds}" title="Add a lesson on this day" aria-label="Add lesson on ${esc(fmtDate(ds))}">${ic('plus')}</button></header>
+      <div class="day-b">${list.length?list.map(o=>slotHTML(o)).join(''):'<div class="day-empty">No lessons</div>'}</div></section>`;}).join('')}</div>`;
+  if(ui.scrollToday&&isMobile()){const tc=$('#todayCol');if(tc)setTimeout(()=>tc.scrollIntoView({block:'start',behavior:'smooth'}),60);}
+  ui.scrollToday=false;
+}
+
+/* =========================================================
+   VIEW: INTERACTIVE MAP (Leaflet)
+   ========================================================= */
+let map=null,mapReady=false,markerLayer=null,routeLayer=null;
+const markers=new Map();
+function ensureMap(){
+  if(map)return;
+  if(!window.L){$('#mapFallback').hidden=false;mapReady=false;return;}
+  const dv=defaultView();
+  map=L.map('mapCanvas',{zoomControl:true}).setView(dv.c,dv.z);
+  tiles().addTo(map);
+  routeLayer=L.layerGroup().addTo(map);
+  markerLayer=L.layerGroup().addTo(map);
+  map.on('click',e=>{
+    if(!ui.pickHome)return;
+    state.settings.homeLat=+e.latlng.lat.toFixed(6);state.settings.homeLng=+e.latlng.lng.toFixed(6);
+    ui.pickHome=false;$('#view-map').classList.remove('picking');save();toast('Home base saved — routes now start here');
+    buildMarkers();renderMapPanel();
+  });
+  mapReady=true;ui.mapFit=true;
+}
+function renderMap(){
+  ensureMap();renderMapFilters();renderMapPanel();
+  $('#view-map').classList.toggle('picking',ui.pickHome);
+  if(mapReady){buildMarkers();setTimeout(()=>map&&map.invalidateSize(),30);}
+}
+function renderMapFilters(){
+  const td=new Date().getDay();
+  $('#mapFilters').innerHTML=`<div class="chips" role="tablist" aria-label="Filter by day">
+    <button class="chip${ui.mapDay==='all'?' on':''}" data-act="map-day" data-day="all">All students <span class="n">${activeStudents().length}</span></button>
+    ${WEEK.map(d=>`<button class="chip${ui.mapDay===String(d)?' on':''}" data-act="map-day" data-day="${d}">${d===td?'<i class="dot present"></i>':''}${DAY_SHORT[d]} <span class="n">${dayStudents(d).length}</span></button>`).join('')}</div>`;
+}
+/* A popup stays on the lesson date it opened with until closed, so tapping P/E/U/R gives visible feedback. */
+function popupContent(m,s){
+  return ()=>{
+    let o=null;
+    if(m._mgDate){o=occurrences(m._mgDate,m._mgDate,s.id)[0]||{date:m._mgDate,status:'',session:null};}
+    else{o=relevantOcc(s);if(o)m._mgDate=o.date;}
+    return popupHTML(s,o);
+  };
+}
+function popupHTML(s,o){
+  const nx=nextOcc(s),t=todayStr();
+  return `<div class="pop">
+    <div class="pop-h">${avatar(s,36)}<div><h4>${esc(s.name)}</h4><div class="muted small">${esc([s.subject,s.level].filter(Boolean).join(' · ')||'Student')}</div></div></div>
+    <div class="pop-row">${ic('pin')}<span>${esc(s.address||'No address details')}</span></div>
+    <div class="pop-row">${ic('clock')}<span>${nx?`Next lesson: <b>${esc(fmtDate(nx.date))}${nx.time?' · '+esc(fmtTime(nx.time)):''}</b>`:'No upcoming lesson'}</span></div>
+    ${o?`<div class="pop-att"><span class="lbl">Quick attendance · ${esc(fmtDate(o.date))}${o.date===t?' (today)':''}</span>${attHTML(s.id,o.date,o.status,!!(o.session&&o.session.note))}</div>`:''}
+    <div class="pop-actions"><button class="btn sm primary" data-act="session" data-sid="${s.id}" data-date="${o?o.date:t}">${ic('note')}Log attendance</button><a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" rel="noopener">${ic('nav')}Directions</a></div>
+  </div>`;
+}
+function buildMarkers(){
+  if(!mapReady)return;
+  markerLayer.clearLayers();routeLayer.clearLayers();markers.clear();
+  const day=ui.mapDay,td=new Date().getDay();
+  const list=(day==='all'?activeStudents().sort(byName):dayStudents(Number(day))).filter(hasLoc);
+  list.forEach((s,i)=>{
+    const color=day==='all'?(s.days.includes(td)?'#10B981':'#8B5CF6'):'#8B5CF6';
+    const m=L.marker([s.lat,s.lng],{icon:pinIcon(day==='all'?initials(s.name):String(i+1),color),title:s.name,riseOnHover:true})
+      .bindPopup(()=>'',{maxWidth:310,minWidth:250,autoPanPadding:[30,30]});
+    m.getPopup().setContent(popupContent(m,s));
+    m.on('popupclose',()=>{m._mgDate=null;});
+    markerLayer.addLayer(m);markers.set(s.id,m);
+  });
+  const home=hasHome()?[state.settings.homeLat,state.settings.homeLng]:null;
+  if(home)L.marker(home,{icon:pinIcon('⌂','#10B981'),title:'Home base',zIndexOffset:-200}).bindPopup('<div class="pop"><h4>Home base</h4><span class="muted">Route start point. Change it from the panel.</span></div>').addTo(markerLayer);
+  if(day!=='all'&&list.length){
+    const pts=(home?[home]:[]).concat(list.map(s=>[s.lat,s.lng]));
+    if(pts.length>1){
+      try{
+        L.polyline(pts,{color:'#0F1017',weight:7,opacity:.6}).addTo(routeLayer);
+        L.polyline(pts,{color:'#8B5CF6',weight:3.5,opacity:.95,dashArray:'8 8'}).addTo(routeLayer);
+      }catch(e){/* vector renderer unavailable — markers and route list still work */}
+    }
+  }
+  if(ui.mapFit){
+    const b=list.map(s=>[s.lat,s.lng]).concat(home?[home]:[]);
+    if(b.length===1)map.setView(b[0],14);else if(b.length>1)map.fitBounds(b,{padding:[50,50],maxZoom:15});
+    ui.mapFit=false;
+  }
+}
+function updatePopups(){
+  if(!mapReady)return;
+  markers.forEach((m,id)=>{if(m.isPopupOpen()){const s=byId(id);if(s)m.getPopup().setContent(popupContent(m,s));}});
+}
+function dateForDow(d){const mon=mondayOf(new Date());return ymd(addDays(mon,WEEK.indexOf(d)));}
+function renderMapPanel(){
+  const p=$('#mapPanel'),day=ui.mapDay,st=state.settings;
+  const home=hasHome()?[st.homeLat,st.homeLng]:null;
+  const homeBox=`<div class="home-box"><div><div class="lbl">Home base</div><div class="muted small">${home?`${home[0].toFixed(4)}, ${home[1].toFixed(4)}`:'Not set — routes begin at the first stop'}</div></div>
+    <button class="btn sm${ui.pickHome?' primary':''}" data-act="pick-home"${mapReady?'':' disabled'}>${ic('target')}${ui.pickHome?'Click map…':home?'Move':'Set'}</button></div>`;
+  const missingList=arr=>arr.length?`<div class="sec-t" style="margin-top:20px">Missing location</div><div class="loc-list">${arr.map(s=>`<button class="loc-item" data-act="edit-student" data-id="${s.id}">${avatar(s,32)}<div><b>${esc(s.name)}</b><span>Add a pin to include on the map</span></div>${ic('edit')}</button>`).join('')}</div>`:'';
+  if(day==='all'){
+    const act=activeStudents().sort(byName),pinned=act.filter(hasLoc),without=act.filter(s=>!hasLoc(s));
+    p.innerHTML=`<div class="card-h"><div><h2>All lesson locations</h2><div class="sub">${pinned.length} of ${plural(act.length,'active student')} pinned</div></div></div>${homeBox}
+      <div class="legend-row"><span><i class="dot present"></i>Lesson today</span><span><i class="dot" style="background:var(--lav)"></i>Other days</span></div>
+      ${pinned.length?`<div class="loc-list">${pinned.map(s=>`<button class="loc-item" data-act="fly" data-id="${s.id}">${avatar(s,32)}<div><b>${esc(s.name)}</b><span>${esc(scheduleText(s))}</span></div>${ic('chevR')}</button>`).join('')}</div>`
+        :emptyHTML('pin','No pinned students',act.length?'Edit a student and click the map picker to add their lesson location.':'Add students with a location to see them here.')}
+      ${missingList(without)}`;
+    return;
+  }
+  const d=Number(day),list=dayStudents(d),pinned=list.filter(hasLoc);
+  let prev=home,total=0;
+  const rows=pinned.map((s,i)=>{
+    const here=[s.lat,s.lng],leg=prev?haversine(prev,here):0;total+=leg;
+    const r=`<div class="stop"><div class="num">${i+1}</div><div class="stop-b">
+      <div class="stop-t"><b>${esc(s.name)}</b><span class="tm">${s.time?esc(fmtTime(s.time)):'Any time'}</span></div>
+      <div class="muted small">${esc(s.address?s.address.replace(/\n/g,', '):'No address details')}</div>
+      ${prev?`<div class="leg">${ic('nav')}${fmtDist(leg)} from ${i===0?'home base':'previous stop'}</div>`:''}
+      <div class="stop-a"><button class="btn sm ghost" data-act="fly" data-id="${s.id}">${ic('pin')}Show</button><button class="btn sm ghost" data-act="session" data-sid="${s.id}" data-date="${dateForDow(d)}">${ic('check')}Log</button></div>
+    </div></div>`;
+    prev=here;return r;
+  }).join('');
+  const gm='https://www.google.com/maps/dir/'+(home?[home]:[]).concat(pinned.map(s=>[s.lat,s.lng])).map(x=>x.join(',')).join('/');
+  p.innerHTML=`<div class="card-h"><div><h2>${DAY_LONG[d]} route</h2><div class="sub">${plural(list.length,'lesson')}${pinned.length?` · ${fmtDist(total)} straight-line`:''}</div></div></div>${homeBox}
+    ${pinned.length?`<div class="route-list">${rows}</div><a class="btn block" style="margin-top:14px" href="${gm}" target="_blank" rel="noopener">${ic('ext')}Open route in Google Maps</a><p class="hint" style="margin-top:8px">Stops are ordered by lesson time. Distances are straight-line estimates.</p>`
+      :emptyHTML('map','No pinned lessons',list.length?'Students on this day have no map pin yet.':`No recurring lessons on ${DAY_LONG[d]}.`)}
+    ${missingList(list.filter(s=>!hasLoc(s)))}`;
+}
+
+/* =========================================================
+   VIEW: BILLING & INVOICES
+   ========================================================= */
+function renderBilling(){
+  const el=$('#view-billing'),m=ui.month,curM=ymOf(new Date());
+  if(!state.students.length){el.innerHTML=emptyHTML('receipt','No billing yet','Add students and mark attendance — earnings are calculated automatically from Present and Unexcused sessions.',`<button class="btn primary" data-act="add-student">${ic('plus')}Add student</button>`);return;}
+  const rows=state.students.map(s=>({s,b:billing(s.id,m),inv:findInvoice(s.id,m)}))
+    .filter(r=>r.b.list.length||r.inv||(r.s.active&&!r.s.archived))
+    .sort((a,b)=>b.b.total-a.b.total||byName(a.s,b.s));
+  const total=rows.reduce((a,r)=>a+r.b.total,0),billN=rows.reduce((a,r)=>a+r.b.billable.length,0);
+  const invs=rows.filter(r=>r.inv),invoiced=invs.reduce((a,r)=>a+num(r.inv.total),0);
+  const paid=invs.filter(r=>r.inv.paid).reduce((a,r)=>a+num(r.inv.total),0);
+  const outstanding=rows.reduce((a,r)=>a+(r.inv&&r.inv.paid?Math.max(0,r.b.total-num(r.inv.total)):r.b.total),0);
+  const months=[-5,-4,-3,-2,-1,0].map(i=>shiftMonth(m,i)),vals=months.map(monthTotal),max=Math.max(...vals,1);
+  const history=state.invoices.slice().sort((a,b)=>(b.month+b.number).localeCompare(a.month+a.number));
+  el.innerHTML=`<div class="toolbar">
+    <div class="week-nav"><button class="icon-btn bordered" data-act="month" data-d="-1" aria-label="Previous month">${ic('chevL')}</button><div class="week-label"><b>${esc(monthLabel(m))}</b></div><button class="icon-btn bordered" data-act="month" data-d="1" aria-label="Next month">${ic('chevR')}</button>${m!==curM?`<button class="btn sm" data-act="month" data-d="0">This month</button>`:''}</div>
+    <span class="spacer"></span><span class="hint">Billable = <b style="color:var(--em)">Present</b> + <b style="color:var(--red)">Unexcused</b> sessions</span></div>
+  <div class="stats">
+    ${stat('Total earnings',money(total),plural(billN,'billable session'),'wallet','good')}
+    ${stat('Invoiced',money(invoiced),plural(invs.length,'invoice')+' issued','receipt')}
+    ${stat('Paid',money(paid),plural(invs.filter(r=>r.inv.paid).length,'invoice')+' settled','check')}
+    ${stat('Outstanding',money(outstanding),'awaiting payment','clock','accent')}
+  </div>
+  <div class="bill-grid">
+    <div class="card"><div class="card-h"><div><h2>Students · ${esc(monthLabel(m))}</h2><div class="sub">Generate invoices or copy a ready-to-send payment reminder</div></div></div>
+      <div class="tbl-wrap"><table class="tbl resp"><thead><tr><th>Student</th><th class="c">Present</th><th class="c">Unexc.</th><th class="c">Excused</th><th class="c">Resch.</th><th class="r">Amount</th><th>Invoice</th><th class="r">Actions</th></tr></thead><tbody>
+      ${rows.map(({s,b,inv})=>{const stale=inv&&Math.abs(num(inv.total)-b.total)>0.004;return `<tr>
+        <td class="no-label"><div class="cell-student">${avatar(s,34)}<div><b>${esc(s.name)}</b><div class="dim small">${money(s.rate)} / lesson${s.archived?' · archived':''}</div></div></div></td>
+        <td class="c num" data-label="Present">${b.counts.present}</td><td class="c num" data-label="Unexcused">${b.counts.unexcused}</td>
+        <td class="c num" data-label="Excused">${b.counts.excused}</td><td class="c num" data-label="Rescheduled">${b.counts.rescheduled}</td>
+        <td class="r" data-label="Amount due"><b class="num">${money(b.total)}</b></td>
+        <td data-label="Invoice">${inv?`<button class="pill click ${inv.paid?'present':'rescheduled'}" data-act="toggle-paid" data-id="${inv.id}" title="Click to toggle paid status">${inv.paid?ic('check')+'Paid':'Unpaid'}</button>${stale?' <span class="mini-tag warn" title="Sessions changed after this invoice was issued — open it to update">Changed</span>':''}`:'<span class="dim small">Not issued</span>'}</td>
+        <td class="no-label"><div class="actions"><button class="btn sm" data-act="invoice" data-sid="${s.id}" data-m="${m}"${b.billable.length||inv?'':' disabled'}>${ic('receipt')}${inv?(stale?'Update':'View'):'Invoice'}</button><button class="btn sm ghost" data-act="copy-reminder" data-sid="${s.id}" data-m="${m}"${b.total>0?'':' disabled'} title="Copy payment reminder text">${ic('copy')}Reminder</button></div></td></tr>`;}).join('')}
+      </tbody></table></div>
+      ${rows.length?'':emptyHTML('receipt','Nothing to bill','No sessions were recorded in this month.')}</div>
+    <div class="card"><div class="card-h"><div><h2>Last 6 months</h2><div class="sub">Billable earnings · tap a bar</div></div></div>
+      <div class="bars">${months.map((mm,i)=>`<div class="bar${mm===m?' cur':''}" data-act="month-set" data-m="${mm}" title="${esc(monthLabel(mm))}: ${esc(money(vals[i]))}"><span class="bv">${shortMoney(vals[i])}</span><div class="bar-track"><div class="b" style="height:${Math.max(2,vals[i]/max*100).toFixed(1)}%"></div></div><span class="bl">${esc(monthShort(mm))}</span></div>`).join('')}</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:20px"><div class="card-h"><div><h2>Invoice history</h2><div class="sub">${plural(history.length,'invoice')} · ${money(history.filter(i=>!i.paid).reduce((a,i)=>a+num(i.total),0))} unpaid overall</div></div></div>
+    ${history.length?`<div class="tbl-wrap"><table class="tbl resp"><thead><tr><th>Number</th><th>Student</th><th>Period</th><th>Issued</th><th class="r">Total</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>
+    ${history.slice(0,60).map(i=>{const s=byId(i.studentId);return `<tr>
+      <td class="no-label"><b class="num">${esc(i.number)}</b></td><td data-label="Student">${esc(s?s.name:(i.studentName||'Removed student'))}</td>
+      <td data-label="Period">${esc(monthLabel(i.month,true))}</td><td data-label="Issued">${esc(fmtFull(i.issueDate))}</td>
+      <td class="r" data-label="Total"><b class="num">${money(i.total,i.currency)}</b></td>
+      <td data-label="Status"><button class="pill click ${i.paid?'present':'rescheduled'}" data-act="toggle-paid" data-id="${i.id}">${i.paid?ic('check')+'Paid':'Unpaid'}</button></td>
+      <td class="no-label"><div class="actions"><button class="btn sm ghost" data-act="view-invoice" data-id="${i.id}">${ic('receipt')}View</button><button class="btn sm ghost" data-act="print-invoice" data-id="${i.id}">${ic('print')}Print</button><button class="icon-btn danger-h" data-act="delete-invoice" data-id="${i.id}" aria-label="Delete invoice">${ic('trash')}</button></div></td></tr>`;}).join('')}
+    </tbody></table></div>`:'<p class="muted small">No invoices yet. Use “Invoice” on a student above — it builds a printable receipt from that month’s billable sessions.</p>'}
+  </div>`;
+}
+function invoiceHTML(inv){
+  const st=state.settings,s=byId(inv.studentId)||{name:inv.studentName||'Former student',parent:'',address:'',email:'',phone:'',subject:'',level:''};
+  const cur=inv.currency||st.currency,m=v=>esc(money(v,cur)),items=inv.items||[];
+  const pN=items.filter(i=>i.status==='present').length,uN=items.filter(i=>i.status==='unexcused').length;
+  const biz=st.business||st.tutorName||'Your Tutoring Studio';
+  return `<div class="invoice-paper">
+    <div class="inv-top">
+      <div class="inv-brand"><div class="inv-logo">${esc(initials(biz))}</div><div><div class="inv-biz">${esc(biz)}</div>${st.business&&st.tutorName?`<div>${esc(st.tutorName)}</div>`:''}<div class="inv-sm">${[st.address,st.email,st.phone].filter(Boolean).map(x=>esc(x).replace(/\n/g,'<br>')).join('<br>')||'Add your contact details in Settings'}</div></div></div>
+      <div class="inv-title"><h2>INVOICE</h2><div class="inv-sm">${esc(inv.number)}</div><span class="inv-status ${inv.paid?'paid':'unpaid'}">${inv.paid?'PAID':'PAYMENT DUE'}</span></div>
+    </div>
+    <div class="inv-meta">
+      <div><div class="lb">Billed to</div><b>${esc(s.parent||s.name)}</b>${s.parent?`<div>Student: ${esc(s.name)}</div>`:''}${s.address?`<div class="inv-sm">${esc(s.address).replace(/\n/g,'<br>')}</div>`:''}${s.email?`<div class="inv-sm">${esc(s.email)}</div>`:''}${s.phone?`<div class="inv-sm">${esc(s.phone)}</div>`:''}</div>
+      <div><div class="lb">Billing period</div><b>${esc(monthLabel(inv.month))}</b><div class="inv-sm">${esc([s.subject,s.level].filter(Boolean).join(' · '))}</div></div>
+      <div><div class="lb">Issue date</div><b>${esc(fmtFull(inv.issueDate))}</b><div class="lb" style="margin-top:10px">${inv.paid?'Paid on':'Due date'}</div><b>${esc(fmtFull(inv.paid&&inv.paidDate?inv.paidDate:inv.dueDate))}</b></div>
+    </div>
+    <table class="inv-table"><thead><tr><th>#</th><th>Lesson date</th><th>Time</th><th>Description</th><th class="r">Amount</th></tr></thead><tbody>
+      ${items.map((it,i)=>`<tr><td>${i+1}</td><td>${esc(fmtDate(it.date,{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</td><td>${it.time?esc(fmtTime(it.time)):'—'}</td><td>${it.status==='present'?'Lesson attended':'Unexcused absence / late cancellation'}</td><td class="r">${m(it.rate)}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:#8a8b9e;padding:22px">No billable lessons in this period</td></tr>'}
+    </tbody></table>
+    <div class="inv-bottom">
+      <div class="inv-summary">${pN} lesson${pN===1?'':'s'} attended · ${uN} unexcused absence${uN===1?'':'s'} (billable)${inv.excused?` · ${inv.excused} excused (not billed)`:''}${inv.rescheduled?` · ${inv.rescheduled} rescheduled (not billed)`:''}</div>
+      <div class="inv-totals"><div><span>Subtotal</span><span>${m(inv.total)}</span></div>${inv.paid?`<div><span>Paid</span><span>−${m(inv.total)}</span></div>`:''}<div class="grand"><span>Total due</span><span>${m(inv.paid?0:inv.total)}</span></div></div>
+    </div>
+    ${st.paymentTerms?`<div class="inv-note"><b>Payment terms</b><br>${esc(st.paymentTerms).replace(/\n/g,'<br>')}</div>`:''}
+    <div class="inv-foot">Thank you for learning with us.</div>
+  </div>`;
+}
+function openInvoice(sid,m){
+  const b=billing(sid,m);
+  if(!b.billable.length&&!findInvoice(sid,m)){toast('No billable lessons in '+monthLabel(m),'err');return;}
+  const inv=upsertInvoice(sid,m);if(!inv)return;
+  showInvoiceModal(inv);if(ui.view==='billing')renderBilling();
+}
+function showInvoiceModal(inv){
+  const s=byId(inv.studentId),wa=s?digits(s.phone):'';
+  openModal({title:`Invoice ${inv.number}`,sub:`${esc(s?s.name:inv.studentName||'')} · ${esc(monthLabel(inv.month))} · ${esc(money(inv.total,inv.currency))}`,size:'xl',
+    body:`<div class="inv-stage">${invoiceHTML(inv)}</div>`,
+    footer:`<button class="btn ${inv.paid?'ghost':'success'} left" data-act="toggle-paid" data-id="${inv.id}" data-modal="1">${ic(inv.paid?'restore':'check')}${inv.paid?'Mark unpaid':'Mark as paid'}</button>
+      ${s?`<button class="btn" data-act="copy-reminder" data-sid="${s.id}" data-m="${inv.month}">${ic('copy')}Copy reminder</button>`:''}
+      ${s&&wa&&!inv.paid?`<a class="btn" href="https://wa.me/${wa}?text=${encodeURIComponent(reminderText(s.id,inv.month))}" target="_blank" rel="noopener">${ic('message')}WhatsApp</a>`:''}
+      <button class="btn primary" data-act="print-invoice" data-id="${inv.id}">${ic('print')}Print / Save PDF</button>`});
+}
+function printInvoice(id){
+  const inv=state.invoices.find(i=>i.id===id);if(!inv)return;
+  const pr=$('#printRoot'),oldTitle=document.title,s=byId(inv.studentId);
+  pr.innerHTML=invoiceHTML(inv);document.body.classList.add('printing');
+  document.title=`${inv.number} ${s?s.name:''}`.trim();
+  const done=()=>{document.body.classList.remove('printing');pr.innerHTML='';document.title=oldTitle;window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{try{window.print();}catch(e){done();toast('Printing is not available here','err');}},60);
+}
+function togglePaid(id,fromModal){
+  const inv=state.invoices.find(i=>i.id===id);if(!inv)return;
+  inv.paid=!inv.paid;inv.paidDate=inv.paid?todayStr():null;save();
+  toast(inv.paid?`${inv.number} marked as paid`:`${inv.number} marked unpaid`);
+  if(fromModal)showInvoiceModal(inv);
+  render();
+}
+async function copyReminder(sid,m){
+  const b=billing(sid,m);
+  if(!b.billable.length){toast('No billable lessons in '+monthLabel(m),'err');return;}
+  upsertInvoice(sid,m);
+  const text=reminderText(sid,m);
+  if(await copyText(text))toast('Reminder copied — paste into WhatsApp or SMS');
+  else showTextModal('Payment reminder',text);
+  if(ui.view==='billing')renderBilling();
+}
+
+/* =========================================================
+   VIEW: SETTINGS & DATA
+   ========================================================= */
+function renderSettings(){
+  const st=state.settings,el=$('#view-settings');
+  let used=0;try{used=(localStorage.getItem(STORE_KEY)||'').length;}catch(e){}
+  const curOpts=[['$','$ — Dollar'],['£','£ — Pound'],['₹','₹ — Rupee'],['€','€ — Euro']];
+  if(!curOpts.find(c=>c[0]===st.currency))curOpts.push([st.currency,st.currency+' — Custom']);
+  el.innerHTML=`<div class="settings-grid">
+  <form class="card" id="setForm" novalidate autocomplete="off">
+    <div class="card-h"><div><h2>Profile & invoicing</h2><div class="sub">Shown on invoices and payment reminders</div></div></div>
+    <div class="form-grid">
+      <div class="form-section">Tutor profile</div>
+      <div class="field"><label for="s-name">Your name</label><input class="input" id="s-name" name="tutorName" value="${esc(st.tutorName)}" placeholder="Alex Morgan"></div>
+      <div class="field"><label for="s-biz">Business name</label><input class="input" id="s-biz" name="business" value="${esc(st.business)}" placeholder="Morgan Music Studio"></div>
+      <div class="field"><label for="s-email">Email</label><input class="input" id="s-email" type="email" name="email" value="${esc(st.email)}"></div>
+      <div class="field"><label for="s-phone">Phone</label><input class="input" id="s-phone" type="tel" name="phone" value="${esc(st.phone)}"></div>
+      <div class="field span-2"><label for="s-addr">Business address</label><textarea class="input" id="s-addr" name="address" rows="2">${esc(st.address)}</textarea></div>
+      <div class="form-section">Billing</div>
+      <div class="field"><label for="s-cur">Currency</label><select class="input" id="s-cur" name="currency">${curOpts.map(c=>`<option value="${esc(c[0])}"${c[0]===st.currency?' selected':''}>${esc(c[1])}</option>`).join('')}</select></div>
+      <div class="field"><label for="s-due">Payment due (days after issue)</label><input class="input" id="s-due" type="number" min="0" name="dueDays" value="${esc(st.dueDays)}"></div>
+      <div class="field"><label for="s-pre">Invoice prefix</label><input class="input" id="s-pre" name="invoicePrefix" value="${esc(st.invoicePrefix)}" maxlength="12"></div>
+      <div class="field"><label for="s-next">Next invoice sequence</label><input class="input" id="s-next" type="number" min="1" name="nextInvoiceNo" value="${esc(st.nextInvoiceNo)}"></div>
+      <div class="field span-2"><label for="s-terms">Payment terms</label><textarea class="input" id="s-terms" name="paymentTerms" rows="3">${esc(st.paymentTerms)}</textarea></div>
+      <div class="field span-2"><label for="s-rem">Payment reminder template</label><textarea class="input" id="s-rem" name="reminderTemplate" rows="4">${esc(st.reminderTemplate)}</textarea>
+        <div class="ph-legend">${['parent','student','month','total','count','invoice','due','rate','terms','tutor'].map(k=>`<code>{${k}}</code>`).join('')}</div></div>
+      <div class="form-section">Map & routes</div>
+      <div class="field"><label for="s-hlat">Home base latitude</label><input class="input" id="s-hlat" name="homeLat" inputmode="decimal" value="${st.homeLat??''}"></div>
+      <div class="field"><label for="s-hlng">Home base longitude</label><input class="input" id="s-hlng" name="homeLng" inputmode="decimal" value="${st.homeLng??''}"></div>
+      <div class="field"><label for="s-unit">Distance unit</label><select class="input" id="s-unit" name="distUnit"><option value="km"${st.distUnit==='km'?' selected':''}>Kilometres</option><option value="mi"${st.distUnit==='mi'?' selected':''}>Miles</option></select></div>
+      <div class="field"><span class="lbl">&nbsp;</span><span class="hint">Tip: set the home base by clicking the map in the Map view.</span></div>
+    </div>
+    <div class="form-actions"><button class="btn ghost" type="button" data-act="reset-template">Reset texts</button><button class="btn primary" type="submit">${ic('check')}Save settings</button></div>
+  </form>
+  <div class="stack">
+    <div class="card"><div class="card-h"><div><h2>Data & backup</h2><div class="sub">Stored only in this browser (localStorage)</div></div></div>
+      <div class="data-rows">
+        <div><span>Students</span><b>${state.students.length}</b></div>
+        <div><span>Logged sessions</span><b>${Object.keys(state.sessions).length}</b></div>
+        <div><span>Invoices</span><b>${state.invoices.length}</b></div>
+        <div><span>Storage used</span><b>${(used/1024).toFixed(1)} KB</b></div>
+        <div><span>Last backup</span><b>${st.lastBackup?esc(new Date(st.lastBackup).toLocaleString()):'Never'}</b></div>
+      </div>
+      <div class="btn-col"><button class="btn primary block" data-act="export">${ic('download')}Export backup (JSON)</button><button class="btn block" data-act="import">${ic('upload')}Import data (JSON)</button></div>
+      <p class="hint" style="margin-top:12px">Export regularly and keep the file somewhere safe. Importing replaces everything currently stored in this browser.</p>
+    </div>
+    <div class="card"><div class="card-h"><div><h2>Sample data & reset</h2><div class="sub">Try the app or start fresh</div></div></div>
+      <div class="btn-col" style="margin-top:0"><button class="btn block" data-act="load-demo">${ic('spark')}Load sample roster</button><button class="btn danger block" data-act="erase">${ic('trash')}Erase all data</button></div>
+    </div>
+  </div></div>`;
+  $('#setForm').addEventListener('submit',e=>{
+    e.preventDefault();const f=e.target,g=n=>f.elements.namedItem(n);
+    const hl=g('homeLat').value.trim(),hg=g('homeLng').value.trim(),la=parseFloat(hl),ln=parseFloat(hg);
+    if((hl||hg)&&!(isFinite(la)&&isFinite(ln)&&Math.abs(la)<=90&&Math.abs(ln)<=180)){toast('Home base coordinates look invalid','err');return;}
+    Object.assign(st,{tutorName:g('tutorName').value.trim(),business:g('business').value.trim(),email:g('email').value.trim(),phone:g('phone').value.trim(),
+      address:g('address').value.trim(),currency:g('currency').value,dueDays:Math.max(0,Math.round(num(g('dueDays').value))),invoicePrefix:g('invoicePrefix').value.trim()||'INV',
+      nextInvoiceNo:Math.max(1,Math.round(num(g('nextInvoiceNo').value))||1),paymentTerms:g('paymentTerms').value.trim(),reminderTemplate:g('reminderTemplate').value.trim()||DEFAULT_REMINDER,
+      homeLat:hl&&hg?la:null,homeLng:hl&&hg?ln:null,distUnit:g('distUnit').value});
+    save();ui.mapFit=true;toast('Settings saved');renderSettings();
+  });
+}
+function exportJSON(){
+  const data=JSON.stringify({app:'Magistent',schema:1,exportedAt:new Date().toISOString(),...state},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`magistent-backup-${todayStr()}.json`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+  state.settings.lastBackup=new Date().toISOString();save();
+  toast('Backup downloaded');if(ui.view==='settings'||ui.view==='home')render();
+}
+async function importJSON(file){
+  try{
+    const d=JSON.parse(await file.text());
+    if(!d||typeof d!=='object'||!Array.isArray(d.students))throw new Error('This file is not a Magistent backup');
+    const nd=normalize(d);
+    if(state.students.length||Object.keys(state.sessions).length){
+      const ok=await confirmBox({title:'Replace current data?',message:`Your current data (<b>${state.students.length}</b> students) will be replaced by this backup containing <b>${nd.students.length}</b> students, <b>${Object.keys(nd.sessions).length}</b> sessions and <b>${nd.invoices.length}</b> invoices.`,ok:'Import & replace',danger:true});
+      if(!ok)return;
+    }
+    state=nd;save();ui.mapFit=true;closeModal();render();toast(`Imported ${plural(nd.students.length,'student')}`);
+  }catch(err){toast(err&&err.message&&!/JSON|Unexpected/i.test(err.message)?err.message:'Could not read that file — is it a valid JSON backup?','err');}
+}
+
+/* =========================================================
+   SAMPLE DATA
+   ========================================================= */
+function loadDemo(){
+  let seed=20261009;
+  const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const T=today(),start=ymd(addDays(T,-77));
+  state=defaults();
+  Object.assign(state.settings,{tutorName:'Alex Morgan',business:'Morgan Music & Maths Tutoring',email:'alex@morgantutoring.example',phone:'+1 212 555 0148',
+    address:'350 W 42nd St\nNew York, NY 10036',currency:'$',homeLat:40.7577,homeLng:-73.9925,distUnit:'mi'});
+  const spec=[
+    ['Emma Thompson','Sarah Thompson','+1 212 555 0101','215 W 84th St, Apt 6B, New York, NY — doorman building, ask for 6B',40.7864,-73.9776,[1,4],'16:00',45,55,'Piano','Grade 3',['Scales C & G major hands together; assigned Minuet p.14','Sight-reading p.14 — introduced dynamics (p/f)','Polished Minuet bars 1–16; practise with metronome at 80','Arpeggios and pedalling basics; exercise #3 for homework']],
+    ['Liam Chen','David Chen','+1 917 555 0122','160 E 72nd St, New York, NY',40.7697,-73.9608,[1],'17:30',60,70,'Algebra II','Honors',['Factoring quadratics; worksheet 4B assigned','Systems of equations — strong progress','Exponential functions intro; quiz next week','Reviewed test corrections']],
+    ['Sofia Martinez','Ana Martinez','+1 646 555 0133','420 W 23rd St, New York, NY (Chelsea)',40.7465,-74.0014,[2],'15:30',60,65,'Violin','Intermediate',['Vibrato exercises; Bach Gavotte first page','Shifting to 3rd position — slow and steady','Bow distribution on long notes; scale in D']],
+    ['Noah Williams','Karen Williams','+1 718 555 0144','58 Pierrepont St, Brooklyn, NY',40.6960,-73.9933,[3],'18:00',60,80,'Chemistry','AP',['Stoichiometry practice set; limiting reagents','Equilibrium & Le Chatelier — needs review','Unit 5 FRQ practice, timed']],
+    ['Ava Patel','Priya Patel','+1 718 555 0155','312 7th Ave, Brooklyn, NY (Park Slope)',40.6710,-73.9814,[2,5],'16:30',60,60,'English Writing','Grade 7',['Persuasive essay outline; thesis statements','Paragraph structure — topic sentences','Peer-review style edits on draft 2','Vocabulary list 6 + short story opening']],
+    ['Ethan Brooks','Mark Brooks','+1 201 555 0166','1000 Hudson St, Hoboken, NJ',40.7484,-74.0283,[6],'10:00',45,50,'Guitar','Beginner',['Open chords G, C, D; strumming pattern 1','Chord changes at 60 bpm; first song','Palm muting intro; tabs for riff #2']],
+    ['Mia Rossi','Lucia Rossi','+1 347 555 0177','31-15 Ditmars Blvd, Astoria, NY',40.7746,-73.9097,[3,6],'16:00',90,95,'SAT Prep','Target 1450+',['Reading section timed drill — 31/52','Math: linear models & word problems','Full practice test review; grammar rules','Desmos strategies for hard math']],
+    ['Oliver Kim','Grace Kim','+1 212 555 0188','140 E 34th St, New York, NY (Murray Hill)',40.7466,-73.9794,[4],'18:30',60,60,'French','A2',['Passé composé with être; dialogue practice','Listening comprehension — café scene','Vocabulary: travel & directions']],
+    ['Zoe Adler','Ruth Adler','+1 917 555 0199','Online lessons (Zoom)',null,null,[5],'19:00',60,65,'Geometry','Grade 9',['Proofs with congruent triangles','Circle theorems — homework set 3']],
+    ['Lucas Green','Helen Green','+1 646 555 0110','2280 Frederick Douglass Blvd, New York, NY (Harlem)',40.8116,-73.9530,[4],'15:00',60,70,'Physics','Regents',['Kinematics graphs','Newton’s laws problem set']]
+  ];
+  const pools={};
+  spec.forEach((r,i)=>{
+    const s=normStudent({id:'demo'+i,name:r[0],parent:r[1],phone:r[2],email:r[1].toLowerCase().replace(/\s+/g,'.')+'@example.com',address:r[3],lat:r[4],lng:r[5],
+      days:r[6],time:r[7],duration:r[8],rate:r[9],subject:r[10],level:r[11],startDate:start,active:true,archived:i===9,notes:i===6?'Exam date: first Saturday of December.':''});
+    state.students.push(s);pools[s.id]=r[12];
+  });
+  const endPast=ymd(addDays(T,-1));
+  for(const s of state.students){
+    const n=Math.round((parseYmd(endPast)-parseYmd(start))/864e5);
+    for(let i=0;i<=n;i++){
+      const d=addDays(parseYmd(start),i),ds=ymd(d);
+      if(!s.days.includes(d.getDay()))continue;
+      if(s.archived&&i>34)continue;
+      if(!s.archived&&i>n-10&&rnd()<0.18)continue;
+      const r=rnd();
+      const status=r<0.8?'present':r<0.88?'excused':r<0.94?'unexcused':'rescheduled';
+      const k=skey(s.id,ds);
+      const note=status==='present'&&rnd()<0.75?pools[s.id][Math.floor(rnd()*pools[s.id].length)]:status==='excused'?'Family trip — notified 2 days ahead':status==='unexcused'?'No-show; no notice given':'';
+      state.sessions[k]={id:k,studentId:s.id,date:ds,time:s.time,status,note,rate:s.rate,rateCustom:false,extra:false,rescheduledTo:'',updatedAt:new Date().toISOString()};
+      if(status==='rescheduled'){
+        const nd=ymd(addDays(d,2));
+        if(nd<=endPast&&!s.days.includes(addDays(d,2).getDay())){
+          const nk=skey(s.id,nd);
+          state.sessions[nk]={id:nk,studentId:s.id,date:nd,time:'17:00',status:'present',note:`Rescheduled from ${fmtDate(ds)}`,rate:s.rate,rateCustom:false,extra:true,rescheduledTo:'',updatedAt:new Date().toISOString()};
+          state.sessions[k].rescheduledTo=nd;
+        }
+      }
+    }
+  }
+  [-2,-1].forEach(off=>{
+    const m=shiftMonth(ymOf(T),off);
+    state.students.forEach(s=>{
+      if(!billing(s.id,m).billable.length)return;
+      const inv=upsertInvoice(s.id,m);
+      inv.issueDate=shiftMonth(m,1)+'-01';
+      inv.dueDate=ymd(addDays(parseYmd(inv.issueDate),state.settings.dueDays));
+      inv.paid=off===-2||rnd()<0.6;
+      inv.paidDate=inv.paid?ymd(addDays(parseYmd(inv.issueDate),3+Math.floor(rnd()*5))):null;
+    });
+  });
+  save();
+}
+
+/* =========================================================
+   EVENT DELEGATION
+   ========================================================= */
+async function onClick(e){
+  if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-modal-back')){if(downOnBack)closeModal();return;}
+  const el=e.target.closest&&e.target.closest('[data-act]');if(!el)return;
+  const act=el.dataset.act,id=el.dataset.id;
+  switch(act){
+    case 'nav':closeModal();go(el.dataset.view);break;
+    case 'collapse':ui.collapsed=!ui.collapsed;$('#app').classList.toggle('collapsed',ui.collapsed);saveUI();setTimeout(()=>{if(map)map.invalidateSize();},300);break;
+    case 'close-modal':closeModal();break;
+    case 'fab':if(ui.view==='students')studentForm();else openSession({free:true,date:todayStr()});break;
+    case 'add-student':closeModal();studentForm();break;
+    case 'edit-student':closeModal();studentForm(id);break;
+    case 'view-student':viewStudent(id);break;
+    case 'archive-student':{const s=byId(id);if(!s)break;s.archived=true;save();render();toast(`${s.name} archived`,'ok',{label:'Undo',fn:()=>{s.archived=false;save();render();}});break;}
+    case 'restore-student':{const s=byId(id);if(!s)break;s.archived=false;save();render();toast(`${s.name} restored to the roster`);break;}
+    case 'delete-student':{
+      const s=byId(id);if(!s)break;
+      const ns=Object.values(state.sessions).filter(x=>x.studentId===id).length,ni=state.invoices.filter(i=>i.studentId===id).length;
+      const ok=await confirmBox({title:'Delete permanently?',message:`<b>${esc(s.name)}</b>, ${plural(ns,'logged session')} and ${plural(ni,'invoice')} will be removed. This cannot be undone.`,ok:'Delete student',danger:true});
+      if(!ok)break;
+      state.students=state.students.filter(x=>x.id!==id);
+      Object.keys(state.sessions).forEach(k=>{if(state.sessions[k].studentId===id)delete state.sessions[k];});
+      state.invoices=state.invoices.filter(i=>i.studentId!==id);
+      save();render();toast('Student deleted');break;}
+    case 'sfilter':ui.sf=el.dataset.f;renderStudents();break;
+    case 'log-lesson':openSession({free:true,sid:el.dataset.sid||'',date:el.dataset.date||todayStr()});break;
+    case 'session':openSession({sid:el.dataset.sid,date:el.dataset.date});break;
+    case 'mark':{
+      const sid=el.dataset.sid,date=el.dataset.date,s=byId(sid);if(!s)break;
+      const res=setStatus(sid,date,el.dataset.status);
+      if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
+      afterChange();
+      if(res==='rescheduled')toast(`${s.name} · rescheduled`,'ok',{label:'Pick new date',fn:()=>openSession({sid,date,status:'rescheduled'})});
+      break;}
+    case 'week':{const d=Number(el.dataset.d);ui.weekStart=d===0?ymd(mondayOf(new Date())):ymd(addDays(parseYmd(ui.weekStart),7*d));renderSchedule();break;}
+    case 'map-day':ui.mapDay=el.dataset.day;ui.mapFit=true;saveUI();if(map)map.closePopup();renderMap();break;
+    case 'fly':{
+      const s=byId(id);if(!s||!hasLoc(s)||!mapReady)break;
+      if(!markers.has(id)){ui.mapDay='all';ui.mapFit=false;renderMap();}
+      map.setView([s.lat,s.lng],Math.max(map.getZoom(),15));
+      const m=markers.get(id);if(m)setTimeout(()=>m.openPopup(),200);
+      if(isMobile())$('.map-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+      break;}
+    case 'pick-home':ui.pickHome=!ui.pickHome;$('#view-map').classList.toggle('picking',ui.pickHome);renderMapPanel();if(ui.pickHome)toast('Click anywhere on the map to set your home base');break;
+    case 'month':{const d=Number(el.dataset.d);ui.month=d===0?ymOf(new Date()):shiftMonth(ui.month,d);render();break;}
+    case 'month-set':ui.month=el.dataset.m;render();break;
+    case 'invoice':openInvoice(el.dataset.sid,el.dataset.m);break;
+    case 'view-invoice':{const inv=state.invoices.find(i=>i.id===id);if(inv)showInvoiceModal(inv);break;}
+    case 'toggle-paid':togglePaid(id,el.dataset.modal==='1');break;
+    case 'print-invoice':printInvoice(id);break;
+    case 'delete-invoice':{
+      const inv=state.invoices.find(i=>i.id===id);if(!inv)break;
+      const ok=await confirmBox({title:'Delete invoice?',message:`Invoice <b>${esc(inv.number)}</b> will be removed. Session records are not affected and you can issue a new invoice any time.`,ok:'Delete invoice',danger:true});
+      if(!ok)break;state.invoices=state.invoices.filter(i=>i.id!==id);save();render();toast('Invoice deleted');break;}
+    case 'copy-reminder':copyReminder(el.dataset.sid,el.dataset.m);break;
+    case 'export':exportJSON();break;
+    case 'import':$('#importFile').click();break;
+    case 'load-demo':{
+      if(state.students.length){const ok=await confirmBox({title:'Load sample roster?',message:'Your current data will be replaced by a sample roster of 10 students with 11 weeks of sessions and invoices. Export a backup first if you want to keep it.',ok:'Replace with sample',danger:true});if(!ok)break;}
+      loadDemo();ui.mapFit=true;ui.mapDay='all';ui.month=ymOf(new Date());closeModal();render();toast('Sample roster loaded — explore every tab');break;}
+    case 'erase':{
+      const ok=await confirmBox({title:'Erase all data?',message:'All students, sessions, invoices and settings stored in this browser will be permanently deleted.',ok:'Erase everything',danger:true});
+      if(!ok)break;state=defaults();save();ui.mapFit=true;closeModal();render();toast('All data erased');break;}
+    case 'reset-template':{const f=$('#setForm');if(f){f.elements.namedItem('reminderTemplate').value=DEFAULT_REMINDER;f.elements.namedItem('paymentTerms').value=DEFAULT_TERMS;toast('Default texts restored — click Save to keep them');}break;}
+    case 'backup-dismiss':ui.backupDismissed=true;renderHome();break;
+    case 'geocode':geocode(el);break;
+    case 'geolocate':geolocate(el);break;
+    case 'clear-pin':clearPin();break;
+  }
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init(){
+  buildNav();
+  if(ui.collapsed)$('#app').classList.add('collapsed');
+  // Capture phase so actions inside Leaflet popups (which stop propagation) still work.
+  document.addEventListener('click',onClick,true);
+  document.addEventListener('mousedown',e=>{downOnBack=!!(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-modal-back'));},true);
+  document.addEventListener('touchstart',e=>{downOnBack=!!(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-modal-back'));},{capture:true,passive:true});
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape')return;
+    if(modalOpen())closeModal();
+    else if(ui.pickHome){ui.pickHome=false;$('#view-map').classList.remove('picking');renderMapPanel();}
+  });
+  $('#importFile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)importJSON(f);});
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(map&&ui.view==='map')map.invalidateSize();},150);});
+  window.addEventListener('storage',e=>{if(e.key===STORE_KEY&&!modalOpen()){state=load();ui.mapFit=true;render();toast('Data updated from another tab');}});
+  // Keep "today", "next lesson" and the home dashboard fresh while the app stays open.
+  let lastDay=todayStr();
+  setInterval(()=>{
+    const d=todayStr();
+    if(d!==lastDay){lastDay=d;ui.weekStart=ymd(mondayOf(new Date()));if(!modalOpen())render();}
+    else if(ui.view==='home'&&!modalOpen()&&!document.hidden)renderHome();
+  },5*60*1000);
+  renderStorageWarn();
+  go(ui.view);
+}
+init();
+})();
+</script>
+</body>
+</html>
